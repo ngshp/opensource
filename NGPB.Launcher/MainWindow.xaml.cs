@@ -4,6 +4,7 @@ using System.Windows;
 
 using NGPB.Launcher.Models;
 using NGPB.Launcher.Services;
+using NGPB.Launcher.Security;
 
 
 namespace NGPB.Launcher;
@@ -15,6 +16,10 @@ public partial class MainWindow : Window
     private readonly PatchDownloader downloader;
 
     private readonly UpdateService updateService;
+
+    private readonly BackupManager backupManager;
+
+    private readonly RollbackService rollbackService;
 
 
     private bool isUpdating;
@@ -29,8 +34,11 @@ public partial class MainWindow : Window
 
         downloader = new PatchDownloader();
 
-
         updateService = new UpdateService();
+
+        backupManager = new BackupManager();
+
+        rollbackService = new RollbackService();
 
 
 
@@ -38,14 +46,14 @@ public partial class MainWindow : Window
 
         ResumeButton.IsEnabled = false;
 
-
     }
 
 
 
-    // ==================================================
-    // START UPDATE BUTTON
-    // ==================================================
+
+    // =====================================
+    // START UPDATE
+    // =====================================
 
     private async void UpdateButton_Click(
         object sender,
@@ -62,7 +70,6 @@ public partial class MainWindow : Window
         isUpdating = true;
 
 
-
         UpdateButton.IsEnabled = false;
 
         PauseButton.IsEnabled = true;
@@ -75,7 +82,6 @@ public partial class MainWindow : Window
         {
 
             await StartUpdate();
-
 
         }
 
@@ -96,9 +102,7 @@ public partial class MainWindow : Window
         finally
         {
 
-
             isUpdating = false;
-
 
 
             UpdateButton.IsEnabled = true;
@@ -106,7 +110,6 @@ public partial class MainWindow : Window
             PauseButton.IsEnabled = false;
 
             ResumeButton.IsEnabled = false;
-
 
         }
 
@@ -117,9 +120,9 @@ public partial class MainWindow : Window
 
 
 
-    // ==================================================
+    // =====================================
     // UPDATE ENGINE
-    // ==================================================
+    // =====================================
 
     private async Task StartUpdate()
     {
@@ -127,7 +130,6 @@ public partial class MainWindow : Window
 
         DownloadText.Text =
             "Checking update...";
-
 
 
         Progress.Value = 0;
@@ -144,23 +146,20 @@ public partial class MainWindow : Window
             manifest =
                 await updateService.GetManifest();
 
-
         }
 
         catch(Exception ex)
         {
 
-
             MessageBox.Show(
 
-                "Tidak dapat mengambil update server\n\n"
-                + ex.Message
+                "Tidak bisa connect server\n\n"+
+                ex.Message
 
             );
 
 
             return;
-
 
         }
 
@@ -172,7 +171,7 @@ public partial class MainWindow : Window
 
             MessageBox.Show(
 
-                "Manifest tidak tersedia"
+                "Manifest tidak ditemukan"
 
             );
 
@@ -188,9 +187,18 @@ public partial class MainWindow : Window
         {
 
 
-
             DownloadText.Text =
                 $"Preparing:\n{file.Name}";
+
+
+
+            // BACKUP FILE LAMA
+
+            backupManager.Backup(
+
+                file.Name
+
+            );
 
 
 
@@ -207,15 +215,13 @@ public partial class MainWindow : Window
 
                     DownloadText.Text =
 
+                        $"Downloading\n\n"+
 
-                        $"Downloading\n\n" +
+                        $"{p.FileName}\n\n"+
 
-                        $"{p.FileName}\n\n" +
-
-                        $"{p.Percentage:F2}%\n" +
+                        $"{p.Percentage:F2}%\n"+
 
                         $"{p.Speed:F2} MB/s";
-
 
 
                 });
@@ -223,6 +229,8 @@ public partial class MainWindow : Window
 
 
 
+
+            // DOWNLOAD PATCH
 
             await downloader.Download(
 
@@ -235,13 +243,73 @@ public partial class MainWindow : Window
 
 
 
+
+            // ============================
+            // SHA256 VERIFY
+            // ============================
+
+
             DownloadText.Text =
+                $"Checking integrity:\n{file.Name}";
 
-                $"Completed:\n{file.Name}";
 
+
+            var verify =
+                await SHA256Verifier.Verify(
+
+                    file.Name,
+
+                    file.SHA256
+
+                );
+
+
+
+
+
+            if(!verify.Success)
+
+            {
+
+
+                DownloadText.Text =
+                    "Verification Failed";
+
+
+
+                MessageBox.Show(
+
+                    "SHA256 tidak cocok\n"+
+                    "Melakukan rollback",
+
+                    "NGPB Security"
+
+                );
+
+
+
+                rollbackService.Restore(
+
+                    file.Name
+
+                );
+
+
+
+                return;
+
+            }
+
+
+
+
+
+            DownloadText.Text =
+                $"Verified ✅\n{file.Name}";
 
 
         }
+
 
 
 
@@ -251,9 +319,7 @@ public partial class MainWindow : Window
 
 
         DownloadText.Text =
-
             "UPDATE COMPLETE";
-
 
 
 
@@ -264,16 +330,15 @@ public partial class MainWindow : Window
         );
 
 
-
     }
 
 
 
 
 
-    // ==================================================
+    // =====================================
     // PAUSE
-    // ==================================================
+    // =====================================
 
     private void Pause_Click(
         object sender,
@@ -286,7 +351,6 @@ public partial class MainWindow : Window
 
 
         DownloadText.Text =
-
             "Download Paused";
 
 
@@ -296,9 +360,9 @@ public partial class MainWindow : Window
 
 
 
-    // ==================================================
+    // =====================================
     // RESUME
-    // ==================================================
+    // =====================================
 
     private void Resume_Click(
         object sender,
@@ -311,7 +375,6 @@ public partial class MainWindow : Window
 
 
         DownloadText.Text =
-
             "Download Resumed";
 
 
