@@ -1,0 +1,65 @@
+{
+  "version": "1.0.5",
+
+  "build": 105,
+
+
+  "mandatoryUpdate": false,
+
+
+  "files":
+  [
+
+    {
+      "name":
+      "Game/data.pak",
+
+
+      "url":
+      "https://cdn.ngpb.com/Game/data.pak",
+
+
+      "size":
+      524288000,
+
+
+      "sha256":
+      "GENERATE_HASH_DISINI"
+
+    },
+
+
+    {
+      "name":
+      "Game/client.dll",
+
+
+      "url":
+      "https://cdn.ngpb.com/Game/client.dll",
+
+
+      "size":
+      10485760,
+
+
+      "sha256":
+      "GENERATE_HASH_DISINI"
+
+    }
+
+  ],
+
+
+  "releaseNotes":
+  {
+
+    "title":
+    "NGPB Season Update",
+
+
+    "description":
+    "New map, weapon update, security patch"
+
+  }
+
+}
