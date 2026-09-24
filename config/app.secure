@@ -1,0 +1,41 @@
+private void CreateDefaultConfig()
+{
+
+
+    var config =
+        new AppConfig
+
+        {
+
+            LauncherVersion = "1.0.0",
+
+            GameName = "NGPB",
+
+            GameExe = "NGPB.exe",
+
+            ApiUrl =
+            "https://api.ngpb.com",
+
+            PatchUrl =
+            "https://patch.ngpb.com",
+
+            Manifest =
+            "manifest.json",
+
+            AutoUpdate = true,
+
+            RequireSHA256 = true
+
+        };
+
+
+
+    AppConfigService service =
+        new AppConfigService();
+
+
+
+    service.Save(config);
+
+
+}
