@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -14,30 +13,30 @@ namespace NGPB.Launcher;
 public partial class MainWindow : Window
 {
 
+
     private readonly PatchDownloader downloader;
 
     private readonly UpdateService updateService;
 
-    private readonly BackupManager backupManager;
-
-    private readonly RollbackService rollbackService;
 
 
     // SECURITY
 
+    private readonly SessionManager sessionManager;
+
+
     private readonly LauncherShield shield;
 
-    private readonly ClientValidator validator;
 
 
-    // CONFIG
+    // SESSION
 
-    private readonly AppConfigService configService;
+    private string? currentToken;
 
-    private AppConfig? appConfig;
 
 
     private bool isUpdating;
+
 
 
 
@@ -47,20 +46,25 @@ public partial class MainWindow : Window
         InitializeComponent();
 
 
+
+        SecurityLogger.Info(
+            "NGPB Launcher Starting"
+        );
+
+
+
         downloader =
             new PatchDownloader();
+
 
 
         updateService =
             new UpdateService();
 
 
-        backupManager =
-            new BackupManager();
 
-
-        rollbackService =
-            new RollbackService();
+        sessionManager =
+            new SessionManager();
 
 
 
@@ -68,42 +72,28 @@ public partial class MainWindow : Window
             new LauncherShield();
 
 
-        validator =
-            new ClientValidator();
 
 
-
-        configService =
-            new AppConfigService();
-
-
-
-        PauseButton.IsEnabled = false;
-
-        ResumeButton.IsEnabled = false;
-
-
-
-        LoadConfig();
-
-
-
-        SecurityLogger.Write(
-            "Launcher Started"
+        SecurityLogger.Security(
+            "Security Module Loaded"
         );
 
 
 
+        // SECURITY CHECK
+
         if(!shield.RunSecurityCheck())
         {
 
-            SecurityLogger.Write(
+
+            SecurityLogger.Error(
                 "Security Check Failed"
             );
 
 
+
             MessageBox.Show(
-                "NGPB Security Failed"
+                "Security Check Failed"
             );
 
 
@@ -114,12 +104,24 @@ public partial class MainWindow : Window
         }
 
 
-        SecurityLogger.Write(
-            "Security Check OK"
+
+
+        SecurityLogger.Security(
+            "Security Check Success"
         );
 
 
-        LoadSecureSession();
+
+        // LOAD SESSION
+
+        LoadSession();
+
+
+
+        PauseButton.IsEnabled = false;
+
+        ResumeButton.IsEnabled = false;
+
 
     }
 
@@ -127,94 +129,122 @@ public partial class MainWindow : Window
 
 
 
-    // ====================================
-    // CONFIG APP.SECURE
-    // ====================================
+
+    // ===================================
+    // SESSION LOAD
+    // ===================================
 
 
-    private void LoadConfig()
+    private void LoadSession()
     {
 
 
-        appConfig =
-            configService.Load();
-
-
-
-        if(appConfig == null)
+        try
         {
 
-            CreateDefaultConfig();
+
+            currentToken =
+                sessionManager.LoadSession();
 
 
-            appConfig =
-                configService.Load();
+
+            if(currentToken != null)
+            {
+
+
+                SecurityLogger.Security(
+                    "Session Restored"
+                );
+
+
+                DownloadText.Text =
+                    "Session Loaded";
+
+
+            }
+
+            else
+            {
+
+
+                SecurityLogger.Info(
+                    "No Session Found"
+                );
+
+
+            }
+
+
+        }
+
+        catch(Exception ex)
+        {
+
+
+            SecurityLogger.Error(
+
+                "Session Load Error : "
+                + ex.Message
+
+            );
 
 
         }
 
 
-
-        SecurityLogger.Write(
-            "Config Loaded"
-        );
-
-
     }
 
 
 
 
 
-    private void CreateDefaultConfig()
+    // ===================================
+    // LOGIN SUCCESS
+    // ===================================
+
+
+    public void LoginSuccess(
+        string jwtToken)
     {
 
 
-        AppConfig config =
-            new AppConfig
-
-            {
-
-                LauncherVersion =
-                "1.0.0",
+        try
+        {
 
 
-                GameName =
-                "NGPB",
-
-
-                GameExe =
-                "NGPB.exe",
-
-
-                ApiUrl =
-                "https://api.ngpb.com",
-
-
-                PatchUrl =
-                "https://patch.ngpb.com",
-
-
-                Manifest =
-                "manifest.json",
-
-
-                AutoUpdate = true,
-
-
-                RequireSHA256 = true
-
-            };
+            currentToken =
+                jwtToken;
 
 
 
-        configService.Save(config);
+            sessionManager.SaveSession(
+
+                jwtToken
+
+            );
 
 
 
-        SecurityLogger.Write(
-            "Default Config Created"
-        );
+            SecurityLogger.Security(
+                "Login Success"
+            );
+
+
+        }
+
+        catch(Exception ex)
+        {
+
+
+            SecurityLogger.Error(
+
+                "Login Save Error : "
+                + ex.Message
+
+            );
+
+
+        }
 
 
     }
@@ -224,9 +254,45 @@ public partial class MainWindow : Window
 
 
 
-    // ====================================
-    // UPDATE BUTTON
-    // ====================================
+
+    // ===================================
+    // LOGOUT
+    // ===================================
+
+
+    public void Logout()
+    {
+
+
+        sessionManager.ClearSession();
+
+
+
+        currentToken = null;
+
+
+
+        SecurityLogger.Security(
+            "Logout Success"
+        );
+
+
+
+        DownloadText.Text =
+            "Logged Out";
+
+
+    }
+
+
+
+
+
+
+
+    // ===================================
+    // START UPDATE
+    // ===================================
 
 
     private async void UpdateButton_Click(
@@ -257,7 +323,9 @@ public partial class MainWindow : Window
         try
         {
 
+
             await StartUpdate();
+
 
         }
 
@@ -265,8 +333,10 @@ public partial class MainWindow : Window
         {
 
 
-            SecurityLogger.Write(
+            SecurityLogger.Error(
+
                 ex.Message
+
             );
 
 
@@ -301,47 +371,16 @@ public partial class MainWindow : Window
 
 
 
-    // ====================================
-    // UPDATE ENGINE
-    // ====================================
+
 
 
     private async Task StartUpdate()
     {
 
 
-        DownloadText.Text =
-            "Checking Server...";
-
-
-
-        SecurityLogger.Write(
+        SecurityLogger.Info(
             "Update Started"
         );
-
-
-
-        bool serverOK =
-            await validator.Validate();
-
-
-
-        if(!serverOK)
-        {
-
-            SecurityLogger.Write(
-                "Server Validation Failed"
-            );
-
-
-            MessageBox.Show(
-                "Server validation failed"
-            );
-
-
-            return;
-
-        }
 
 
 
@@ -355,11 +394,18 @@ public partial class MainWindow : Window
 
 
 
+
         if(manifest == null)
         {
 
-            MessageBox.Show(
+
+            SecurityLogger.Error(
                 "Manifest unavailable"
+            );
+
+
+            MessageBox.Show(
+                "Manifest tidak tersedia"
             );
 
 
@@ -375,21 +421,16 @@ public partial class MainWindow : Window
         {
 
 
+            SecurityLogger.Info(
+
+                $"Downloading {file.Name}"
+
+            );
+
+
 
             DownloadText.Text =
-            $"Preparing {file.Name}";
-
-
-
-            SecurityLogger.Write(
-                $"Backup {file.Name}"
-            );
-
-
-
-            backupManager.Backup(
-                file.Name
-            );
+                $"Downloading {file.Name}";
 
 
 
@@ -407,16 +448,16 @@ public partial class MainWindow : Window
 
                 DownloadText.Text =
 
-                $"Downloading\n\n" +
 
-                $"{p.FileName}\n\n" +
+                    $"{p.FileName}\n\n" +
 
-                $"{p.Percentage:F2}%\n" +
+                    $"{p.Percentage:F2}%\n" +
 
-                $"{p.Speed:F2} MB/s";
+                    $"{p.Speed:F2} MB/s";
 
 
             });
+
 
 
 
@@ -432,57 +473,10 @@ public partial class MainWindow : Window
 
 
 
+            SecurityLogger.Security(
 
+                $"Download Complete {file.Name}"
 
-            SecurityLogger.Write(
-                $"Verify {file.Name}"
-            );
-
-
-
-            var verify =
-            await SHA256Verifier.Verify(
-
-                file.Name,
-
-                file.SHA256
-
-            );
-
-
-
-
-
-            if(!verify.Success)
-            {
-
-
-                SecurityLogger.Write(
-                    "SHA256 Failed"
-                );
-
-
-                rollbackService.Restore(
-                    file.Name
-                );
-
-
-
-                MessageBox.Show(
-                    "Patch corrupt, rollback"
-                );
-
-
-                return;
-
-            }
-
-
-
-
-
-            SecurityLogger.Write(
-                $"Verified {file.Name}"
             );
 
 
@@ -496,19 +490,16 @@ public partial class MainWindow : Window
 
 
 
+        SecurityLogger.Security(
+
+            "Update Complete"
+
+        );
+
+
+
         DownloadText.Text =
             "UPDATE COMPLETE";
-
-
-
-        SecurityLogger.Write(
-            "Update Complete"
-        );
-
-
-        MessageBox.Show(
-            "Patch berhasil"
-        );
 
 
     }
@@ -517,9 +508,11 @@ public partial class MainWindow : Window
 
 
 
-    // ====================================
-    // PAUSE RESUME
-    // ====================================
+
+
+    // ===================================
+    // PAUSE
+    // ===================================
 
 
     private void Pause_Click(
@@ -531,18 +524,27 @@ public partial class MainWindow : Window
         downloader.Pause();
 
 
-        SecurityLogger.Write(
-            "Download Pause"
+
+        SecurityLogger.Info(
+            "Download Paused"
         );
 
 
         DownloadText.Text =
             "Paused";
 
+
     }
 
 
 
+
+
+
+
+    // ===================================
+    // RESUME
+    // ===================================
 
 
     private void Resume_Click(
@@ -554,102 +556,19 @@ public partial class MainWindow : Window
         downloader.Resume();
 
 
-        SecurityLogger.Write(
-            "Download Resume"
+
+        SecurityLogger.Info(
+            "Download Resumed"
         );
+
 
 
         DownloadText.Text =
             "Resumed";
 
-    }
-
-
-
-
-
-
-    // ====================================
-    // SESSION.SECURE
-    // ====================================
-
-
-    public void SaveSecureSession(
-        string token)
-    {
-
-
-        byte[] data =
-            ConfigProtector.Encrypt(
-                token
-            );
-
-
-
-        File.WriteAllBytes(
-
-            "session.secure",
-
-            data
-
-        );
-
-
-
-        SecurityLogger.Write(
-            "Session Saved"
-        );
-
 
     }
 
-
-
-
-
-    private string? LoadSecureSession()
-    {
-
-
-        if(!File.Exists(
-            "session.secure"))
-        {
-
-            SecurityLogger.Write(
-                "No Session Found"
-            );
-
-
-            return null;
-
-        }
-
-
-
-
-        byte[] data =
-            File.ReadAllBytes(
-                "session.secure"
-            );
-
-
-
-        string token =
-            ConfigProtector.Decrypt(
-                data
-            );
-
-
-
-        SecurityLogger.Write(
-            "Session Loaded"
-        );
-
-
-        return token;
-
-
-    }
 
 
 }
