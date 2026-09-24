@@ -1,118 +1,230 @@
-using System.Text.Json;
-using NGPB.Launcher.Models;
+using System.IO;
+using NGPB.Launcher.Security;
 
 
 namespace NGPB.Launcher.Services;
 
 
-public static class SessionManager
+public class SessionManager
 {
 
 
-private static readonly string FileName =
-
-"session.json";
-
-
-
-public static void Save()
-
-{
-
-
-var data = new
-
-{
-
-UserSession.Username,
-
-UserSession.Token
-
-};
+    private readonly string sessionFile =
+        "session.secure";
 
 
 
-File.WriteAllText(
+    // ===============================
+    // SAVE SESSION
+    // ===============================
 
-FileName,
-
-JsonSerializer.Serialize(data)
-
-);
-
-
-}
+    public bool SaveSession(
+        string token)
+    {
 
 
-
-public static void Load()
-
-{
+        try
+        {
 
 
-if(!File.Exists(FileName))
+            byte[] encrypted =
+                ConfigProtector.Encrypt(
 
-return;
+                    token
+
+                );
 
 
 
-var json =
-File.ReadAllText(FileName);
+            File.WriteAllBytes(
+
+                sessionFile,
+
+                encrypted
+
+            );
 
 
 
-var data =
-JsonSerializer.Deserialize<SessionData>(json);
+            SecurityLogger.Security(
+                "Session saved"
+            );
 
 
 
-if(data == null)
-
-return;
+            return true;
 
 
+        }
 
-UserSession.Username =
-data.Username;
-
-
-
-UserSession.Token =
-data.Token;
+        catch(Exception ex)
+        {
 
 
-}
+            SecurityLogger.Error(
+
+                "Save session failed: "
+                + ex.Message
+
+            );
 
 
+            return false;
 
-public static void Logout()
-
-{
-
-
-UserSession.Username="";
-
-UserSession.Token="";
+        }
 
 
-if(File.Exists(FileName))
-
-File.Delete(FileName);
-
-
-}
+    }
 
 
 
-private class SessionData
 
-{
 
-public string Username {get;set;}="";
+    // ===============================
+    // LOAD SESSION
+    // ===============================
 
-public string Token {get;set;}="";
+    public string? LoadSession()
+    {
 
-}
+
+        try
+        {
+
+
+            if(!File.Exists(sessionFile))
+            {
+
+                SecurityLogger.Info(
+                    "No session found"
+                );
+
+
+                return null;
+
+            }
+
+
+
+
+            byte[] encrypted =
+                File.ReadAllBytes(
+
+                    sessionFile
+
+                );
+
+
+
+            string token =
+                ConfigProtector.Decrypt(
+
+                    encrypted
+
+                );
+
+
+
+
+            SecurityLogger.Security(
+                "Session loaded"
+            );
+
+
+
+            return token;
+
+
+        }
+
+        catch(Exception ex)
+        {
+
+
+            SecurityLogger.Error(
+
+                "Load session failed: "
+                + ex.Message
+
+            );
+
+
+            return null;
+
+        }
+
+
+    }
+
+
+
+
+
+    // ===============================
+    // DELETE SESSION
+    // ===============================
+
+    public void ClearSession()
+    {
+
+
+        try
+        {
+
+
+            if(File.Exists(sessionFile))
+            {
+
+                File.Delete(
+                    sessionFile
+                );
+
+            }
+
+
+
+            SecurityLogger.Security(
+                "Session cleared"
+            );
+
+
+        }
+
+        catch(Exception ex)
+        {
+
+
+            SecurityLogger.Error(
+
+                "Clear session failed: "
+                + ex.Message
+
+            );
+
+
+        }
+
+
+    }
+
+
+
+
+
+    // ===============================
+    // CHECK SESSION
+    // ===============================
+
+    public bool HasSession()
+    {
+
+
+        return File.Exists(
+            sessionFile
+        );
+
+
+    }
 
 
 }
