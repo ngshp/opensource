@@ -1,4 +1,4 @@
-<StackPanel 
+<StackPanel
     Orientation="Horizontal"
     HorizontalAlignment="Center"
     Margin="0,20,0,0">
@@ -17,7 +17,6 @@
         Click="UpdateButton_Click"/>
 
 
-
     <!-- PAUSE -->
 
     <Button
@@ -29,7 +28,6 @@
         FontSize="16"
         Cursor="Hand"
         Click="Pause_Click"/>
-
 
 
     <!-- RESUME -->
