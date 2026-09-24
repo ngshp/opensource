@@ -27,11 +27,17 @@ public partial class MainWindow : Window
         updateService = new UpdateService();
 
 
+        PauseButton.IsEnabled = false;
+
+        ResumeButton.IsEnabled = false;
+
     }
 
 
 
+    // =========================
     // START UPDATE
+    // =========================
 
     private async void UpdateButton_Click(
         object sender,
@@ -39,6 +45,11 @@ public partial class MainWindow : Window
     {
 
         UpdateButton.IsEnabled = false;
+
+        PauseButton.IsEnabled = true;
+
+        ResumeButton.IsEnabled = true;
+
 
 
         try
@@ -55,7 +66,7 @@ public partial class MainWindow : Window
 
                 ex.Message,
 
-                "Update Error"
+                "NGPB Update Error"
 
             );
 
@@ -66,6 +77,10 @@ public partial class MainWindow : Window
         {
 
             UpdateButton.IsEnabled = true;
+
+            PauseButton.IsEnabled = false;
+
+            ResumeButton.IsEnabled = false;
 
         }
 
@@ -106,7 +121,7 @@ public partial class MainWindow : Window
 
 
             DownloadText.Text =
-                "Downloading " + file.Name;
+                $"Preparing {file.Name}";
 
 
 
@@ -122,7 +137,9 @@ public partial class MainWindow : Window
 
                     DownloadText.Text =
 
-                        $"{p.FileName}\n" +
+                        $"Downloading:\n" +
+
+                        $"{p.FileName}\n\n" +
 
                         $"{p.Percentage:F2}%\n" +
 
@@ -167,7 +184,9 @@ public partial class MainWindow : Window
 
 
 
-    // PAUSE DOWNLOAD
+    // =========================
+    // PAUSE
+    // =========================
 
     private void Pause_Click(
         object sender,
@@ -185,7 +204,9 @@ public partial class MainWindow : Window
 
 
 
-    // RESUME DOWNLOAD
+    // =========================
+    // RESUME
+    // =========================
 
     private void Resume_Click(
         object sender,
