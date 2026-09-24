@@ -1,108 +1,121 @@
+using System.Threading.Tasks;
+using System.Windows;
 using NGPB.Launcher.Models;
 using NGPB.Launcher.Services;
+
+
+namespace NGPB.Launcher;
+
+
 public partial class MainWindow : Window
 {
 
-private readonly PatchDownloader downloader;
+    private readonly PatchDownloader downloader;
 
-private readonly UpdateService updateService;
-
-
-public MainWindow()
-{
-    InitializeComponent();
+    private readonly UpdateService updateService;
 
 
-    downloader = new PatchDownloader();
-
-    updateService = new UpdateService();
-
-}
-
-}
-
-private async void UpdateButton_Click(
-object sender,
-RoutedEventArgs e)
-{
-
-await StartUpdate();
-
-}
-
-private async Task StartUpdate()
-{
+    public MainWindow()
+    {
+        InitializeComponent();
 
 
-DownloadText.Text =
-"Checking update...";
+        downloader = new PatchDownloader();
 
+        updateService = new UpdateService();
 
-var manifest =
-await updateService.GetManifest();
+    }
 
 
 
-if(manifest == null)
-{
+    private async void UpdateButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
 
-MessageBox.Show(
-"Manifest tidak tersedia");
+        await StartUpdate();
 
-return;
-
-}
-
-
-
-foreach(var file in manifest.Files)
-{
-
-
-DownloadText.Text =
-"Downloading "+file.Name;
+    }
 
 
 
-var progress =
-new Progress<DownloadProgressInfo>(p =>
-{
+    private async Task StartUpdate()
+    {
 
 
-Progress.Value =
-p.Percentage;
+        DownloadText.Text =
+            "Checking update...";
 
 
-
-DownloadText.Text =
-
-$"{p.FileName}\n"+
-$"{p.Percentage:F2}%\n"+
-$"{p.Speed:F2} MB/s";
-
-
-});
+        var manifest =
+            await updateService.GetManifest();
 
 
 
-await downloader.Download(
+        if(manifest == null)
+        {
 
-file,
+            MessageBox.Show(
+                "Manifest tidak tersedia");
 
-progress
+            return;
 
-);
-
-
-}
-
+        }
 
 
-DownloadText.Text =
-"UPDATE COMPLETE";
+
+        foreach(var file in manifest.Files)
+        {
 
 
-MessageBox.Show(
-"Patch berhasil!");
+            DownloadText.Text =
+                "Downloading " + file.Name;
+
+
+
+            var progress =
+                new Progress<DownloadProgressInfo>(p =>
+                {
+
+
+                    Progress.Value =
+                        p.Percentage;
+
+
+
+                    DownloadText.Text =
+
+                        $"{p.FileName}\n" +
+
+                        $"{p.Percentage:F2}%\n" +
+
+                        $"{p.Speed:F2} MB/s";
+
+
+                });
+
+
+
+            await downloader.Download(
+
+                file,
+
+                progress
+
+            );
+
+
+        }
+
+
+
+        DownloadText.Text =
+            "UPDATE COMPLETE";
+
+
+        MessageBox.Show(
+            "Patch berhasil!");
+
+    }
 
 }
