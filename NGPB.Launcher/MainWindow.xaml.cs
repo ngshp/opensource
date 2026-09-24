@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -22,6 +23,15 @@ public partial class MainWindow : Window
     private readonly RollbackService rollbackService;
 
 
+
+    // SECURITY
+
+    private readonly LauncherShield shield;
+
+    private readonly ClientValidator validator;
+
+
+
     private bool isUpdating;
 
 
@@ -32,13 +42,34 @@ public partial class MainWindow : Window
         InitializeComponent();
 
 
-        downloader = new PatchDownloader();
 
-        updateService = new UpdateService();
+        downloader =
+            new PatchDownloader();
 
-        backupManager = new BackupManager();
 
-        rollbackService = new RollbackService();
+
+        updateService =
+            new UpdateService();
+
+
+
+        backupManager =
+            new BackupManager();
+
+
+
+        rollbackService =
+            new RollbackService();
+
+
+
+        shield =
+            new LauncherShield();
+
+
+
+        validator =
+            new ClientValidator();
 
 
 
@@ -46,14 +77,48 @@ public partial class MainWindow : Window
 
         ResumeButton.IsEnabled = false;
 
+
+
+        // =========================
+        // SECURITY STARTUP CHECK
+        // =========================
+
+
+        if(!shield.RunSecurityCheck())
+        {
+
+            MessageBox.Show(
+
+                "NGPB Security Check Failed",
+
+                "Security"
+
+            );
+
+
+            Application.Current.Shutdown();
+
+            return;
+
+        }
+
+
+
+        // LOAD SESSION
+
+        LoadSecureSession();
+
+
     }
 
 
 
 
-    // =====================================
+
+    // ===================================
     // START UPDATE
-    // =====================================
+    // ===================================
+
 
     private async void UpdateButton_Click(
         object sender,
@@ -70,6 +135,7 @@ public partial class MainWindow : Window
         isUpdating = true;
 
 
+
         UpdateButton.IsEnabled = false;
 
         PauseButton.IsEnabled = true;
@@ -78,10 +144,12 @@ public partial class MainWindow : Window
 
 
 
+
         try
         {
 
             await StartUpdate();
+
 
         }
 
@@ -92,7 +160,7 @@ public partial class MainWindow : Window
 
                 ex.Message,
 
-                "NGPB UPDATE ERROR"
+                "NGPB Update Error"
 
             );
 
@@ -102,7 +170,9 @@ public partial class MainWindow : Window
         finally
         {
 
+
             isUpdating = false;
+
 
 
             UpdateButton.IsEnabled = true;
@@ -110,6 +180,7 @@ public partial class MainWindow : Window
             PauseButton.IsEnabled = false;
 
             ResumeButton.IsEnabled = false;
+
 
         }
 
@@ -120,16 +191,51 @@ public partial class MainWindow : Window
 
 
 
-    // =====================================
+    // ===================================
     // UPDATE ENGINE
-    // =====================================
+    // ===================================
+
 
     private async Task StartUpdate()
     {
 
 
+        // SERVER VALIDATION
+
+
+        DownloadText.Text =
+            "Checking security...";
+
+
+
+        bool serverOK =
+            await validator.Validate();
+
+
+
+        if(!serverOK)
+        {
+
+            MessageBox.Show(
+
+                "Server validation failed",
+
+                "NGPB Security"
+
+            );
+
+
+            return;
+
+        }
+
+
+
+
+
         DownloadText.Text =
             "Checking update...";
+
 
 
         Progress.Value = 0;
@@ -140,29 +246,8 @@ public partial class MainWindow : Window
 
 
 
-        try
-        {
-
-            manifest =
-                await updateService.GetManifest();
-
-        }
-
-        catch(Exception ex)
-        {
-
-            MessageBox.Show(
-
-                "Tidak bisa connect server\n\n"+
-                ex.Message
-
-            );
-
-
-            return;
-
-        }
-
+        manifest =
+            await updateService.GetManifest();
 
 
 
@@ -171,7 +256,7 @@ public partial class MainWindow : Window
 
             MessageBox.Show(
 
-                "Manifest tidak ditemukan"
+                "Manifest tidak tersedia"
 
             );
 
@@ -179,6 +264,7 @@ public partial class MainWindow : Window
             return;
 
         }
+
 
 
 
@@ -192,13 +278,15 @@ public partial class MainWindow : Window
 
 
 
-            // BACKUP FILE LAMA
+            // BACKUP OLD FILE
+
 
             backupManager.Backup(
 
                 file.Name
 
             );
+
 
 
 
@@ -215,6 +303,7 @@ public partial class MainWindow : Window
 
                     DownloadText.Text =
 
+
                         $"Downloading\n\n"+
 
                         $"{p.FileName}\n\n"+
@@ -230,7 +319,8 @@ public partial class MainWindow : Window
 
 
 
-            // DOWNLOAD PATCH
+            // DOWNLOAD
+
 
             await downloader.Download(
 
@@ -244,13 +334,13 @@ public partial class MainWindow : Window
 
 
 
-            // ============================
-            // SHA256 VERIFY
-            // ============================
+
+            // SHA256 CHECK
 
 
             DownloadText.Text =
-                $"Checking integrity:\n{file.Name}";
+                $"Verifying:\n{file.Name}";
+
 
 
 
@@ -266,21 +356,14 @@ public partial class MainWindow : Window
 
 
 
-
             if(!verify.Success)
 
             {
 
 
-                DownloadText.Text =
-                    "Verification Failed";
-
-
-
                 MessageBox.Show(
 
-                    "SHA256 tidak cocok\n"+
-                    "Melakukan rollback",
+                    "SHA256 Failed\nRollback",
 
                     "NGPB Security"
 
@@ -298,8 +381,8 @@ public partial class MainWindow : Window
 
                 return;
 
-            }
 
+            }
 
 
 
@@ -309,7 +392,6 @@ public partial class MainWindow : Window
 
 
         }
-
 
 
 
@@ -336,15 +418,15 @@ public partial class MainWindow : Window
 
 
 
-    // =====================================
+    // ===================================
     // PAUSE
-    // =====================================
+    // ===================================
+
 
     private void Pause_Click(
         object sender,
         RoutedEventArgs e)
     {
-
 
         downloader.Pause();
 
@@ -360,15 +442,15 @@ public partial class MainWindow : Window
 
 
 
-    // =====================================
+    // ===================================
     // RESUME
-    // =====================================
+    // ===================================
+
 
     private void Resume_Click(
         object sender,
         RoutedEventArgs e)
     {
-
 
         downloader.Resume();
 
@@ -376,6 +458,86 @@ public partial class MainWindow : Window
 
         DownloadText.Text =
             "Download Resumed";
+
+
+    }
+
+
+
+
+
+    // ===================================
+    // SECURE SESSION SAVE
+    // ===================================
+
+
+    public void SaveSecureSession(
+        string token)
+    {
+
+
+        byte[] encrypted =
+            ConfigProtector.Encrypt(
+
+                token
+
+            );
+
+
+
+        File.WriteAllBytes(
+
+            "session.secure",
+
+            encrypted
+
+        );
+
+
+    }
+
+
+
+
+
+    // ===================================
+    // SECURE SESSION LOAD
+    // ===================================
+
+
+    private string? LoadSecureSession()
+    {
+
+
+        if(!File.Exists(
+
+            "session.secure"
+
+        ))
+
+            return null;
+
+
+
+        byte[] data =
+            File.ReadAllBytes(
+
+                "session.secure"
+
+            );
+
+
+
+        string token =
+            ConfigProtector.Decrypt(
+
+                data
+
+            );
+
+
+
+        return token;
 
 
     }
