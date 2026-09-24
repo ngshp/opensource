@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows;
+
 using NGPB.Launcher.Models;
 using NGPB.Launcher.Services;
 
@@ -16,33 +17,51 @@ public partial class MainWindow : Window
     private readonly UpdateService updateService;
 
 
+    private bool isUpdating;
+
+
 
     public MainWindow()
     {
+
         InitializeComponent();
 
 
         downloader = new PatchDownloader();
 
+
         updateService = new UpdateService();
+
 
 
         PauseButton.IsEnabled = false;
 
         ResumeButton.IsEnabled = false;
 
+
     }
 
 
 
-    // =========================
-    // START UPDATE
-    // =========================
+    // ==================================================
+    // START UPDATE BUTTON
+    // ==================================================
 
     private async void UpdateButton_Click(
         object sender,
         RoutedEventArgs e)
     {
+
+
+        if(isUpdating)
+
+            return;
+
+
+
+        isUpdating = true;
+
+
 
         UpdateButton.IsEnabled = false;
 
@@ -57,6 +76,7 @@ public partial class MainWindow : Window
 
             await StartUpdate();
 
+
         }
 
         catch(Exception ex)
@@ -66,7 +86,7 @@ public partial class MainWindow : Window
 
                 ex.Message,
 
-                "NGPB Update Error"
+                "NGPB UPDATE ERROR"
 
             );
 
@@ -76,18 +96,30 @@ public partial class MainWindow : Window
         finally
         {
 
+
+            isUpdating = false;
+
+
+
             UpdateButton.IsEnabled = true;
 
             PauseButton.IsEnabled = false;
 
             ResumeButton.IsEnabled = false;
 
+
         }
+
 
     }
 
 
 
+
+
+    // ==================================================
+    // UPDATE ENGINE
+    // ==================================================
 
     private async Task StartUpdate()
     {
@@ -98,8 +130,40 @@ public partial class MainWindow : Window
 
 
 
-        var manifest =
-            await updateService.GetManifest();
+        Progress.Value = 0;
+
+
+
+        PatchManifest? manifest;
+
+
+
+        try
+        {
+
+            manifest =
+                await updateService.GetManifest();
+
+
+        }
+
+        catch(Exception ex)
+        {
+
+
+            MessageBox.Show(
+
+                "Tidak dapat mengambil update server\n\n"
+                + ex.Message
+
+            );
+
+
+            return;
+
+
+        }
+
 
 
 
@@ -107,7 +171,10 @@ public partial class MainWindow : Window
         {
 
             MessageBox.Show(
-                "Manifest tidak tersedia");
+
+                "Manifest tidak tersedia"
+
+            );
 
 
             return;
@@ -116,12 +183,15 @@ public partial class MainWindow : Window
 
 
 
-        foreach(var file in manifest.Files)
+
+        foreach(PatchFile file in manifest.Files)
         {
 
 
+
             DownloadText.Text =
-                $"Preparing {file.Name}";
+                $"Preparing:\n{file.Name}";
+
 
 
 
@@ -137,7 +207,8 @@ public partial class MainWindow : Window
 
                     DownloadText.Text =
 
-                        $"Downloading:\n" +
+
+                        $"Downloading\n\n" +
 
                         $"{p.FileName}\n\n" +
 
@@ -146,7 +217,10 @@ public partial class MainWindow : Window
                         $"{p.Speed:F2} MB/s";
 
 
+
                 });
+
+
 
 
 
@@ -159,7 +233,16 @@ public partial class MainWindow : Window
             );
 
 
+
+
+            DownloadText.Text =
+
+                $"Completed:\n{file.Name}";
+
+
+
         }
+
 
 
 
@@ -168,7 +251,9 @@ public partial class MainWindow : Window
 
 
         DownloadText.Text =
+
             "UPDATE COMPLETE";
+
 
 
 
@@ -179,47 +264,59 @@ public partial class MainWindow : Window
         );
 
 
+
     }
 
 
 
 
-    // =========================
+
+    // ==================================================
     // PAUSE
-    // =========================
+    // ==================================================
 
     private void Pause_Click(
         object sender,
         RoutedEventArgs e)
     {
 
+
         downloader.Pause();
 
 
+
         DownloadText.Text =
+
             "Download Paused";
+
 
     }
 
 
 
 
-    // =========================
+
+    // ==================================================
     // RESUME
-    // =========================
+    // ==================================================
 
     private void Resume_Click(
         object sender,
         RoutedEventArgs e)
     {
 
+
         downloader.Resume();
 
 
+
         DownloadText.Text =
+
             "Download Resumed";
 
+
     }
+
 
 
 }
