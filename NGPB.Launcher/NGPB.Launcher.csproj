@@ -1,0 +1,64 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+
+<PropertyGroup>
+
+<OutputType>WinExe</OutputType>
+
+<TargetFramework>
+net8.0-windows
+</TargetFramework>
+
+
+<UseWPF>true</UseWPF>
+
+
+<Nullable>enable</Nullable>
+
+
+<AssemblyName>
+NG PB Launcher
+</AssemblyName>
+
+
+<RootNamespace>
+NGPB.Launcher
+</RootNamespace>
+
+
+<RuntimeIdentifier>
+win-x64
+</RuntimeIdentifier>
+
+
+<SelfContained>
+true
+</SelfContained>
+
+
+<PublishSingleFile>
+true
+</PublishSingleFile>
+
+
+</PropertyGroup>
+
+
+
+<ItemGroup>
+
+<Resource Include="Assets\logo.png"/>
+
+<Resource Include="Assets\background.mp4"/>
+
+<Resource Include="Assets\user.png"/>
+
+<Resource Include="Assets\server.png"/>
+
+<Resource Include="Assets\update.png"/>
+
+
+</ItemGroup>
+
+
+</Project>
