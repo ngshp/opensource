@@ -1,42 +1,36 @@
-<StackPanel Orientation="Horizontal"
-            Margin="0,20,0,0">
+<StackPanel 
+    Orientation="Horizontal"
+    HorizontalAlignment="Center"
+    Margin="0,20,0,0">
 
 
-<Button
-
-x:Name="UpdateButton"
-
-Content="START UPDATE"
-
-Width="220"
-
-Height="55"
-
-Click="UpdateButton_Click"/>
+    <Button
+        x:Name="UpdateButton"
+        Content="⚡ START UPDATE"
+        Width="220"
+        Height="55"
+        FontSize="18"
+        FontWeight="Bold"
+        Click="UpdateButton_Click"/>
 
 
-<Button
-
-Content="PAUSE"
-
-Width="120"
-
-Height="55"
-
-Margin="15,0"
-
-Click="Pause_Click"/>
+    <Button
+        x:Name="PauseButton"
+        Content="⏸ PAUSE"
+        Width="120"
+        Height="55"
+        Margin="15,0"
+        FontSize="16"
+        Click="Pause_Click"/>
 
 
-<Button
-
-Content="RESUME"
-
-Width="120"
-
-Height="55"
-
-Click="Resume_Click"/>
+    <Button
+        x:Name="ResumeButton"
+        Content="▶ RESUME"
+        Width="120"
+        Height="55"
+        FontSize="16"
+        Click="Resume_Click"/>
 
 
 </StackPanel>
