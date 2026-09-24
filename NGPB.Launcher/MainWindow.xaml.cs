@@ -13,23 +13,33 @@ namespace NGPB.Launcher;
 public partial class MainWindow : Window
 {
 
-
     private readonly PatchDownloader downloader;
 
     private readonly UpdateService updateService;
 
 
 
-    // SECURITY
-
-    private readonly SessionManager sessionManager;
-
+    // SECURITY SERVICES
 
     private readonly LauncherShield shield;
+
+    private readonly MainSecure mainSecure;
+
+    private readonly AntiCheatService antiCheat;
+
+
+
+    // CONFIG
+
+    private readonly AppConfigService configService;
+
+    private AppConfig? appConfig;
 
 
 
     // SESSION
+
+    private readonly SessionManager sessionManager;
 
     private string? currentToken;
 
@@ -63,9 +73,8 @@ public partial class MainWindow : Window
 
 
 
-        sessionManager =
-            new SessionManager();
 
+        // SECURITY INIT
 
 
         shield =
@@ -73,27 +82,59 @@ public partial class MainWindow : Window
 
 
 
-
-        SecurityLogger.Security(
-            "Security Module Loaded"
-        );
+        mainSecure =
+            new MainSecure();
 
 
 
-        // SECURITY CHECK
+        antiCheat =
+            new AntiCheatService();
 
-        if(!shield.RunSecurityCheck())
+
+
+
+
+        // CONFIG INIT
+
+
+        configService =
+            new AppConfigService();
+
+
+
+        LoadAppConfig();
+
+
+
+
+
+        // SESSION INIT
+
+
+        sessionManager =
+            new SessionManager();
+
+
+
+        LoadSession();
+
+
+
+
+
+        // MAIN.SECURE
+
+
+        if(!mainSecure.Validate())
         {
 
-
             SecurityLogger.Error(
-                "Security Check Failed"
+                "main.secure validation failed"
             );
 
 
-
             MessageBox.Show(
-                "Security Check Failed"
+                "Launcher Security Failed"
             );
 
 
@@ -106,15 +147,34 @@ public partial class MainWindow : Window
 
 
 
-        SecurityLogger.Security(
-            "Security Check Success"
-        );
+
+        // LAUNCHER SHIELD
+
+
+        if(!shield.RunSecurityCheck())
+        {
+
+
+            SecurityLogger.Error(
+                "Launcher integrity failed"
+            );
+
+
+            Application.Current.Shutdown();
+
+            return;
+
+
+        }
 
 
 
-        // LOAD SESSION
 
-        LoadSession();
+
+        // ANTICHEAT START
+
+
+        antiCheat.Initialize();
 
 
 
@@ -123,6 +183,12 @@ public partial class MainWindow : Window
         ResumeButton.IsEnabled = false;
 
 
+
+        SecurityLogger.Security(
+            "Launcher Ready"
+        );
+
+
     }
 
 
@@ -130,117 +196,88 @@ public partial class MainWindow : Window
 
 
 
-    // ===================================
-    // SESSION LOAD
-    // ===================================
+
+    // =====================================
+    // APP.SECURE CONFIG
+    // =====================================
+
+
+    private void LoadAppConfig()
+    {
+
+
+        appConfig =
+            configService.Load();
+
+
+
+        if(appConfig == null)
+        {
+
+
+            SecurityLogger.Error(
+                "app.secure missing"
+            );
+
+
+            MessageBox.Show(
+                "Config Error"
+            );
+
+
+            Application.Current.Shutdown();
+
+
+            return;
+
+        }
+
+
+
+        SecurityLogger.Info(
+            "app.secure loaded"
+        );
+
+
+    }
+
+
+
+
+
+
+
+    // =====================================
+    // SESSION.SECURE
+    // =====================================
 
 
     private void LoadSession()
     {
 
 
-        try
+        currentToken =
+            sessionManager.LoadSession();
+
+
+
+        if(currentToken != null)
         {
-
-
-            currentToken =
-                sessionManager.LoadSession();
-
-
-
-            if(currentToken != null)
-            {
-
-
-                SecurityLogger.Security(
-                    "Session Restored"
-                );
-
-
-                DownloadText.Text =
-                    "Session Loaded";
-
-
-            }
-
-            else
-            {
-
-
-                SecurityLogger.Info(
-                    "No Session Found"
-                );
-
-
-            }
-
-
-        }
-
-        catch(Exception ex)
-        {
-
-
-            SecurityLogger.Error(
-
-                "Session Load Error : "
-                + ex.Message
-
-            );
-
-
-        }
-
-
-    }
-
-
-
-
-
-    // ===================================
-    // LOGIN SUCCESS
-    // ===================================
-
-
-    public void LoginSuccess(
-        string jwtToken)
-    {
-
-
-        try
-        {
-
-
-            currentToken =
-                jwtToken;
-
-
-
-            sessionManager.SaveSession(
-
-                jwtToken
-
-            );
-
 
 
             SecurityLogger.Security(
-                "Login Success"
+                "session.secure restored"
             );
 
 
         }
 
-        catch(Exception ex)
+        else
         {
 
 
-            SecurityLogger.Error(
-
-                "Login Save Error : "
-                + ex.Message
-
+            SecurityLogger.Info(
+                "No active session"
             );
 
 
@@ -253,11 +290,32 @@ public partial class MainWindow : Window
 
 
 
+    public void LoginSuccess(
+        string token)
+    {
 
 
-    // ===================================
-    // LOGOUT
-    // ===================================
+        currentToken =
+            token;
+
+
+
+        sessionManager.SaveSession(
+            token
+        );
+
+
+
+        SecurityLogger.Security(
+            "Login success"
+        );
+
+
+    }
+
+
+
+
 
 
     public void Logout()
@@ -273,13 +331,8 @@ public partial class MainWindow : Window
 
 
         SecurityLogger.Security(
-            "Logout Success"
+            "Logout success"
         );
-
-
-
-        DownloadText.Text =
-            "Logged Out";
 
 
     }
@@ -290,9 +343,9 @@ public partial class MainWindow : Window
 
 
 
-    // ===================================
-    // START UPDATE
-    // ===================================
+    // =====================================
+    // UPDATE BUTTON
+    // =====================================
 
 
     private async void UpdateButton_Click(
@@ -311,11 +364,11 @@ public partial class MainWindow : Window
 
 
 
-        UpdateButton.IsEnabled = false;
+        UpdateButton.IsEnabled=false;
 
-        PauseButton.IsEnabled = true;
+        PauseButton.IsEnabled=true;
 
-        ResumeButton.IsEnabled = true;
+        ResumeButton.IsEnabled=true;
 
 
 
@@ -323,20 +376,15 @@ public partial class MainWindow : Window
         try
         {
 
-
             await StartUpdate();
-
 
         }
 
         catch(Exception ex)
         {
 
-
             SecurityLogger.Error(
-
                 ex.Message
-
             );
 
 
@@ -347,19 +395,19 @@ public partial class MainWindow : Window
 
         }
 
-
         finally
         {
 
 
-            isUpdating = false;
+            isUpdating=false;
 
 
-            UpdateButton.IsEnabled = true;
 
-            PauseButton.IsEnabled = false;
+            UpdateButton.IsEnabled=true;
 
-            ResumeButton.IsEnabled = false;
+            PauseButton.IsEnabled=false;
+
+            ResumeButton.IsEnabled=false;
 
 
         }
@@ -373,9 +421,65 @@ public partial class MainWindow : Window
 
 
 
+    // =====================================
+    // UPDATE SECURITY FLOW
+    // =====================================
+
 
     private async Task StartUpdate()
     {
+
+
+        // ANTI CHEAT CHECK BEFORE UPDATE
+
+
+        SecurityLogger.Security(
+            "Anti Cheat Scan"
+        );
+
+
+
+        if(!antiCheat.CheckSafe())
+        {
+
+
+            SecurityLogger.Error(
+                "Cheat process detected"
+            );
+
+
+            MessageBox.Show(
+                "Security violation detected"
+            );
+
+
+            return;
+
+
+        }
+
+
+
+
+
+
+        // SESSION CHECK
+
+
+        if(currentToken == null)
+        {
+
+
+            SecurityLogger.Warning(
+                "No session before update"
+            );
+
+
+        }
+
+
+
+
 
 
         SecurityLogger.Info(
@@ -386,6 +490,8 @@ public partial class MainWindow : Window
 
         DownloadText.Text =
             "Checking Update...";
+
+
 
 
 
@@ -429,17 +535,9 @@ public partial class MainWindow : Window
 
 
 
-            DownloadText.Text =
-                $"Downloading {file.Name}";
-
-
-
-
-
             var progress =
             new Progress<DownloadProgressInfo>(p =>
             {
-
 
                 Progress.Value =
                     p.Percentage;
@@ -448,16 +546,14 @@ public partial class MainWindow : Window
 
                 DownloadText.Text =
 
+                $"{p.FileName}\n\n" +
 
-                    $"{p.FileName}\n\n" +
+                $"{p.Percentage:F2}%\n" +
 
-                    $"{p.Percentage:F2}%\n" +
-
-                    $"{p.Speed:F2} MB/s";
+                $"{p.Speed:F2} MB/s";
 
 
             });
-
 
 
 
@@ -485,15 +581,12 @@ public partial class MainWindow : Window
 
 
 
-
         Progress.Value = 100;
 
 
 
         SecurityLogger.Security(
-
             "Update Complete"
-
         );
 
 
@@ -509,10 +602,9 @@ public partial class MainWindow : Window
 
 
 
-
-    // ===================================
+    // =====================================
     // PAUSE
-    // ===================================
+    // =====================================
 
 
     private void Pause_Click(
@@ -530,10 +622,6 @@ public partial class MainWindow : Window
         );
 
 
-        DownloadText.Text =
-            "Paused";
-
-
     }
 
 
@@ -541,10 +629,9 @@ public partial class MainWindow : Window
 
 
 
-
-    // ===================================
+    // =====================================
     // RESUME
-    // ===================================
+    // =====================================
 
 
     private void Resume_Click(
@@ -562,13 +649,7 @@ public partial class MainWindow : Window
         );
 
 
-
-        DownloadText.Text =
-            "Resumed";
-
-
     }
-
 
 
 }
