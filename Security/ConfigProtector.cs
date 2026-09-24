@@ -9,49 +9,53 @@ public static class ConfigProtector
 {
 
 
-public static byte[] Encrypt(
-string text)
-
-{
+    public static byte[] Encrypt(string text)
+    {
 
 
-return ProtectedData.Protect(
-
-Encoding.UTF8.GetBytes(text),
-
-null,
-
-DataProtectionScope.CurrentUser
-
-);
-
-
-}
+        byte[] data =
+            Encoding.UTF8.GetBytes(text);
 
 
 
-public static string Decrypt(
-byte[] data)
+        return ProtectedData.Protect(
 
-{
+            data,
 
+            null,
 
-return Encoding.UTF8.GetString(
+            DataProtectionScope.CurrentUser
 
-ProtectedData.Unprotect(
-
-data,
-
-null,
-
-DataProtectionScope.CurrentUser
-
-)
-
-);
+        );
 
 
-}
+    }
+
+
+
+
+
+    public static string Decrypt(byte[] data)
+    {
+
+
+        byte[] result =
+            ProtectedData.Unprotect(
+
+                data,
+
+                null,
+
+                DataProtectionScope.CurrentUser
+
+            );
+
+
+
+        return Encoding.UTF8.GetString(result);
+
+
+    }
 
 
 }
