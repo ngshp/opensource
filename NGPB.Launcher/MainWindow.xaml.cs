@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using System.Windows;
 using NGPB.Launcher.Models;
@@ -15,6 +16,7 @@ public partial class MainWindow : Window
     private readonly UpdateService updateService;
 
 
+
     public MainWindow()
     {
         InitializeComponent();
@@ -24,18 +26,51 @@ public partial class MainWindow : Window
 
         updateService = new UpdateService();
 
+
     }
 
 
+
+    // START UPDATE
 
     private async void UpdateButton_Click(
         object sender,
         RoutedEventArgs e)
     {
 
-        await StartUpdate();
+        UpdateButton.IsEnabled = false;
+
+
+        try
+        {
+
+            await StartUpdate();
+
+        }
+
+        catch(Exception ex)
+        {
+
+            MessageBox.Show(
+
+                ex.Message,
+
+                "Update Error"
+
+            );
+
+        }
+
+
+        finally
+        {
+
+            UpdateButton.IsEnabled = true;
+
+        }
 
     }
+
 
 
 
@@ -45,6 +80,7 @@ public partial class MainWindow : Window
 
         DownloadText.Text =
             "Checking update...";
+
 
 
         var manifest =
@@ -57,6 +93,7 @@ public partial class MainWindow : Window
 
             MessageBox.Show(
                 "Manifest tidak tersedia");
+
 
             return;
 
@@ -109,13 +146,59 @@ public partial class MainWindow : Window
 
 
 
+        Progress.Value = 100;
+
+
+
         DownloadText.Text =
             "UPDATE COMPLETE";
 
 
+
         MessageBox.Show(
-            "Patch berhasil!");
+
+            "Patch berhasil!"
+
+        );
+
 
     }
+
+
+
+
+    // PAUSE DOWNLOAD
+
+    private void Pause_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+
+        downloader.Pause();
+
+
+        DownloadText.Text =
+            "Download Paused";
+
+    }
+
+
+
+
+    // RESUME DOWNLOAD
+
+    private void Resume_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+
+        downloader.Resume();
+
+
+        DownloadText.Text =
+            "Download Resumed";
+
+    }
+
 
 }
