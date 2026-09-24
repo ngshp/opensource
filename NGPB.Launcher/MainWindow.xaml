@@ -4,6 +4,8 @@
     Margin="0,20,0,0">
 
 
+    <!-- START UPDATE -->
+
     <Button
         x:Name="UpdateButton"
         Content="⚡ START UPDATE"
@@ -11,8 +13,12 @@
         Height="55"
         FontSize="18"
         FontWeight="Bold"
+        Cursor="Hand"
         Click="UpdateButton_Click"/>
 
+
+
+    <!-- PAUSE -->
 
     <Button
         x:Name="PauseButton"
@@ -21,8 +27,12 @@
         Height="55"
         Margin="15,0"
         FontSize="16"
+        Cursor="Hand"
         Click="Pause_Click"/>
 
+
+
+    <!-- RESUME -->
 
     <Button
         x:Name="ResumeButton"
@@ -30,6 +40,7 @@
         Width="120"
         Height="55"
         FontSize="16"
+        Cursor="Hand"
         Click="Resume_Click"/>
 
 
