@@ -1,12 +1,8 @@
 private void CreateDefaultConfig()
 {
-
-
     var config =
         new AppConfig
-
         {
-
             LauncherVersion = "1.0.0",
 
             GameName = "NGPB",
@@ -14,28 +10,32 @@ private void CreateDefaultConfig()
             GameExe = "NGPB.exe",
 
             ApiUrl =
-            "https://api.ngpb.com",
+                "https://api.ngpb.com",
 
             PatchUrl =
-            "https://patch.ngpb.com",
+                "https://patch.ngpb.com",
 
             Manifest =
-            "manifest.json",
+                "manifest.json",
 
             AutoUpdate = true,
 
             RequireSHA256 = true
-
         };
-
-
 
     AppConfigService service =
         new AppConfigService();
 
-
-
-    service.Save(config);
-
-
+    if (!service.Save(config))
+    {
+        SecurityLogger.Error(
+            "Failed to create app.secure"
+        );
+    }
+    else
+    {
+        SecurityLogger.Info(
+            "Default app.secure created"
+        );
+    }
 }
