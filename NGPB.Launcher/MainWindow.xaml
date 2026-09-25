@@ -22,104 +22,64 @@ Background="Transparent">
 <Window.Resources>
 
 
-    <!-- FADE IN -->
-
-    <Storyboard x:Key="FadeIn">
-
-        <DoubleAnimation
-
-            Storyboard.TargetProperty="Opacity"
-
-            From="0"
-
-            To="1"
-
-            Duration="0:0:1"/>
-
-    </Storyboard>
+<Style x:Key="LauncherButton"
+TargetType="Button">
 
 
+<Setter Property="Background"
+Value="#152A42"/>
 
-    <!-- FADE OUT -->
 
-    <Storyboard x:Key="FadeOut">
+<Setter Property="Foreground"
+Value="White"/>
 
-        <DoubleAnimation
 
-            Storyboard.TargetProperty="Opacity"
+<Setter Property="FontWeight"
+Value="Bold"/>
 
-            From="1"
 
-            To="0"
+<Setter Property="BorderThickness"
+Value="0"/>
 
-            Duration="0:0:1"/>
 
-    </Storyboard>
+<Setter Property="Cursor"
+Value="Hand"/>
 
 
 
-    <!-- BUTTON STYLE -->
+<Setter Property="Template">
 
-    <Style x:Key="LauncherButton"
-           TargetType="Button">
+<Setter.Value>
 
-
-        <Setter Property="Background"
-                Value="#152A42"/>
+<ControlTemplate TargetType="Button">
 
 
-        <Setter Property="Foreground"
-                Value="White"/>
+<Border
+
+Background="{TemplateBinding Background}"
+
+CornerRadius="10">
 
 
-        <Setter Property="FontWeight"
-                Value="Bold"/>
+<ContentPresenter
+
+HorizontalAlignment="Center"
+
+VerticalAlignment="Center"/>
 
 
-        <Setter Property="BorderThickness"
-                Value="0"/>
+</Border>
 
 
-        <Setter Property="Cursor"
-                Value="Hand"/>
+</ControlTemplate>
 
 
-        <Setter Property="Template">
+</Setter.Value>
+
+</Setter>
 
 
-            <Setter.Value>
-
-
-                <ControlTemplate TargetType="Button">
-
-
-                    <Border
-
-                    Background="{TemplateBinding Background}"
-
-                    CornerRadius="10">
-
-
-                        <ContentPresenter
-
-                        HorizontalAlignment="Center"
-
-                        VerticalAlignment="Center"/>
-
-
-                    </Border>
-
-
-                </ControlTemplate>
-
-
-            </Setter.Value>
-
-
-        </Setter>
-
-
-    </Style>
+</Style>
 
 
 
@@ -129,16 +89,13 @@ Background="Transparent">
 
 
 
-
 <Grid>
 
 
 
-
-
-<!-- ==========================
-     BACKGROUND VIDEO
-========================== -->
+<!-- =========================
+ BACKGROUND VIDEO
+========================= -->
 
 
 <MediaElement
@@ -159,7 +116,7 @@ Volume="0"/>
 
 
 
-<!-- DARK OVERLAY -->
+<!-- OVERLAY -->
 
 
 <Border
@@ -171,9 +128,12 @@ Background="#B8050B14"/>
 
 
 
-<!-- ==========================
-     MAIN UI
-========================== -->
+
+
+
+<!-- =========================
+ MAIN UI
+========================= -->
 
 
 <Grid Margin="35">
@@ -189,6 +149,8 @@ Background="#B8050B14"/>
 <RowDefinition Height="70"/>
 
 </Grid.RowDefinitions>
+
+
 
 
 
@@ -244,15 +206,11 @@ Foreground="White"/>
 
 
 
-
 <TextBlock
 
 Text="SECURE GAME LAUNCHER"
 
-Foreground="#6EA8FF"
-
-FontSize="14"/>
-
+Foreground="#6EA8FF"/>
 
 
 </StackPanel>
@@ -264,10 +222,6 @@ FontSize="14"/>
 
 
 
-
-
-
-<!-- SERVER BOX -->
 
 
 <Border
@@ -292,7 +246,6 @@ Foreground="Gray"/>
 
 
 
-
 <TextBlock
 
 x:Name="ServerStatus"
@@ -306,13 +259,10 @@ FontSize="22"
 FontWeight="Bold"/>
 
 
-
 </StackPanel>
 
 
-
 </Border>
-
 
 
 </Grid>
@@ -333,11 +283,9 @@ FontWeight="Bold"/>
 
 <StackPanel
 
-VerticalAlignment="Center"
+HorizontalAlignment="Center"
 
-HorizontalAlignment="Center">
-
-
+VerticalAlignment="Center">
 
 
 
@@ -349,10 +297,7 @@ Foreground="White"
 
 FontSize="30"
 
-FontWeight="Bold"
-
-HorizontalAlignment="Center"/>
-
+FontWeight="Bold"/>
 
 
 
@@ -363,11 +308,7 @@ Text="Secure Update System"
 
 Foreground="#9AB4D0"
 
-Margin="0,10,0,30"
-
-HorizontalAlignment="Center"/>
-
-
+Margin="0,10,0,30"/>
 
 
 
@@ -407,8 +348,6 @@ TextAlignment="Center"/>
 
 
 
-
-
 <ProgressBar
 
 x:Name="Progress"
@@ -433,10 +372,6 @@ Margin="0,20,0,0"/>
 
 
 
-
-
-<!-- BUTTON -->
-
 <StackPanel
 
 Orientation="Horizontal"
@@ -444,8 +379,6 @@ Orientation="Horizontal"
 HorizontalAlignment="Center"
 
 Margin="0,30,0,0">
-
-
 
 
 
@@ -461,12 +394,7 @@ Width="220"
 
 Height="55"
 
-FontSize="18"
-
 Click="UpdateButton_Click"/>
-
-
-
 
 
 
@@ -490,9 +418,6 @@ Click="Pause_Click"/>
 
 
 
-
-
-
 <Button
 
 x:Name="ResumeButton"
@@ -508,22 +433,13 @@ Height="55"
 Click="Resume_Click"/>
 
 
-
 </StackPanel>
 
 
-
-
-
 </StackPanel>
-
 
 
 </Grid>
-
-
-
-
 
 
 
@@ -554,7 +470,6 @@ Text="Anti Cheat • SHA256 • Secure Update"
 Foreground="#6EA8FF"/>
 
 
-
 </StackPanel>
 
 
@@ -565,109 +480,3 @@ Foreground="#6EA8FF"/>
 
 
 </Grid>
-
-
-
-
-
-
-
-
-
-<!-- ==========================
-     LOADING SCREEN
-========================== -->
-
-
-<Grid
-
-x:Name="LoadingScreen"
-
-Background="#DD050B14">
-
-
-
-
-
-<StackPanel
-
-HorizontalAlignment="Center"
-
-VerticalAlignment="Center">
-
-
-
-
-
-<Image
-
-Source="Assets/logo.png"
-
-Width="130"
-
-Height="130"/>
-
-
-
-
-
-<TextBlock
-
-Text="NG PB"
-
-FontSize="50"
-
-FontWeight="Bold"
-
-Foreground="White"
-
-HorizontalAlignment="Center"/>
-
-
-
-
-
-
-<TextBlock
-
-x:Name="LoadingText"
-
-Text="Initializing Security..."
-
-Foreground="#6EA8FF"
-
-FontSize="18"
-
-Margin="0,20"/>
-
-
-
-
-
-
-<ProgressBar
-
-Width="350"
-
-Height="15"
-
-IsIndeterminate="True"/>
-
-
-
-
-
-
-</StackPanel>
-
-
-</Grid>
-
-
-
-
-
-</Grid>
-
-
-</Window>
