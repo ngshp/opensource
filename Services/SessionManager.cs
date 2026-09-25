@@ -9,69 +9,31 @@ public class SessionManager
 {
 
 
-    private readonly string sessionFile =
+    private readonly string file =
         "session.secure";
 
 
 
-    // ===============================
-    // SAVE SESSION
-    // ===============================
 
-    public bool SaveSession(
-        string token)
+    public void SaveSession(string token)
     {
 
 
-        try
-        {
-
-
-            byte[] encrypted =
-                ConfigProtector.Encrypt(
-
-                    token
-
-                );
+        byte[] data =
+            System.Text.Encoding.UTF8
+            .GetBytes(token);
 
 
 
-            File.WriteAllBytes(
-
-                sessionFile,
-
-                encrypted
-
-            );
+        File.WriteAllBytes(
+            file,
+            data
+        );
 
 
-
-            SecurityLogger.Security(
-                "Session saved"
-            );
-
-
-
-            return true;
-
-
-        }
-
-        catch(Exception ex)
-        {
-
-
-            SecurityLogger.Error(
-
-                "Save session failed: "
-                + ex.Message
-
-            );
-
-
-            return false;
-
-        }
+        SecurityLogger.Security(
+            "Session Saved"
+        );
 
 
     }
@@ -79,79 +41,33 @@ public class SessionManager
 
 
 
-
-    // ===============================
-    // LOAD SESSION
-    // ===============================
 
     public string? LoadSession()
     {
 
 
-        try
-        {
-
-
-            if(!File.Exists(sessionFile))
-            {
-
-                SecurityLogger.Info(
-                    "No session found"
-                );
-
-
-                return null;
-
-            }
-
-
-
-
-            byte[] encrypted =
-                File.ReadAllBytes(
-
-                    sessionFile
-
-                );
-
-
-
-            string token =
-                ConfigProtector.Decrypt(
-
-                    encrypted
-
-                );
-
-
-
-
-            SecurityLogger.Security(
-                "Session loaded"
-            );
-
-
-
-            return token;
-
-
-        }
-
-        catch(Exception ex)
-        {
-
-
-            SecurityLogger.Error(
-
-                "Load session failed: "
-                + ex.Message
-
-            );
-
-
+        if(!File.Exists(file))
             return null;
 
-        }
+
+
+        byte[] data =
+            File.ReadAllBytes(file);
+
+
+
+        string token =
+            System.Text.Encoding.UTF8
+            .GetString(data);
+
+
+
+        SecurityLogger.Security(
+            "Session Loaded"
+        );
+
+
+        return token;
 
 
     }
@@ -159,68 +75,21 @@ public class SessionManager
 
 
 
-
-    // ===============================
-    // DELETE SESSION
-    // ===============================
 
     public void ClearSession()
     {
 
 
-        try
+        if(File.Exists(file))
         {
 
-
-            if(File.Exists(sessionFile))
-            {
-
-                File.Delete(
-                    sessionFile
-                );
-
-            }
-
-
-
-            SecurityLogger.Security(
-                "Session cleared"
-            );
-
-
-        }
-
-        catch(Exception ex)
-        {
-
-
-            SecurityLogger.Error(
-
-                "Clear session failed: "
-                + ex.Message
-
-            );
-
+            File.Delete(file);
 
         }
 
 
-    }
-
-
-
-
-
-    // ===============================
-    // CHECK SESSION
-    // ===============================
-
-    public bool HasSession()
-    {
-
-
-        return File.Exists(
-            sessionFile
+        SecurityLogger.Security(
+            "Session Cleared"
         );
 
 
