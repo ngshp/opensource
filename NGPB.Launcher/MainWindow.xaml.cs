@@ -13,13 +13,20 @@ namespace NGPB.Launcher;
 public partial class MainWindow : Window
 {
 
+
+    // ===============================
+    // UPDATE SERVICES
+    // ===============================
+
     private readonly PatchDownloader downloader;
 
     private readonly UpdateService updateService;
 
 
 
+    // ===============================
     // SECURITY SERVICES
+    // ===============================
 
     private readonly LauncherShield shield;
 
@@ -29,7 +36,9 @@ public partial class MainWindow : Window
 
 
 
+    // ===============================
     // CONFIG
+    // ===============================
 
     private readonly AppConfigService configService;
 
@@ -37,7 +46,10 @@ public partial class MainWindow : Window
 
 
 
+
+    // ===============================
     // SESSION
+    // ===============================
 
     private readonly SessionManager sessionManager;
 
@@ -49,6 +61,12 @@ public partial class MainWindow : Window
 
 
 
+
+
+
+    // ===============================
+    // CONSTRUCTOR
+    // ===============================
 
     public MainWindow()
     {
@@ -74,9 +92,6 @@ public partial class MainWindow : Window
 
 
 
-        // SECURITY INIT
-
-
         shield =
             new LauncherShield();
 
@@ -94,21 +109,9 @@ public partial class MainWindow : Window
 
 
 
-        // CONFIG INIT
-
-
         configService =
             new AppConfigService();
 
-
-
-        LoadAppConfig();
-
-
-
-
-
-        // SESSION INIT
 
 
         sessionManager =
@@ -116,17 +119,17 @@ public partial class MainWindow : Window
 
 
 
-        LoadSession();
 
 
 
-
-
-        // MAIN.SECURE
+        // ===============================
+        // MAIN.SECURE CHECK
+        // ===============================
 
 
         if(!mainSecure.Validate())
         {
+
 
             SecurityLogger.Error(
                 "main.secure validation failed"
@@ -148,7 +151,35 @@ public partial class MainWindow : Window
 
 
 
-        // LAUNCHER SHIELD
+
+        // ===============================
+        // LOAD APP.SECURE
+        // ===============================
+
+
+        LoadAppConfig();
+
+
+
+
+
+
+        // ===============================
+        // LOAD SESSION.SECURE
+        // ===============================
+
+
+        LoadSession();
+
+
+
+
+
+
+
+        // ===============================
+        // LAUNCHER INTEGRITY
+        // ===============================
 
 
         if(!shield.RunSecurityCheck())
@@ -157,6 +188,11 @@ public partial class MainWindow : Window
 
             SecurityLogger.Error(
                 "Launcher integrity failed"
+            );
+
+
+            MessageBox.Show(
+                "Launcher Modified"
             );
 
 
@@ -171,10 +207,15 @@ public partial class MainWindow : Window
 
 
 
-        // ANTICHEAT START
+
+        // ===============================
+        // ANTI CHEAT START
+        // ===============================
 
 
         antiCheat.Initialize();
+
+
 
 
 
@@ -184,8 +225,9 @@ public partial class MainWindow : Window
 
 
 
+
         SecurityLogger.Security(
-            "Launcher Ready"
+            "NGPB Launcher Ready"
         );
 
 
@@ -197,9 +239,11 @@ public partial class MainWindow : Window
 
 
 
-    // =====================================
-    // APP.SECURE CONFIG
-    // =====================================
+
+
+    // ===============================
+    // APP.SECURE
+    // ===============================
 
 
     private void LoadAppConfig()
@@ -221,7 +265,7 @@ public partial class MainWindow : Window
 
 
             MessageBox.Show(
-                "Config Error"
+                "Config Missing"
             );
 
 
@@ -230,7 +274,9 @@ public partial class MainWindow : Window
 
             return;
 
+
         }
+
 
 
 
@@ -247,9 +293,11 @@ public partial class MainWindow : Window
 
 
 
-    // =====================================
+
+
+    // ===============================
     // SESSION.SECURE
-    // =====================================
+    // ===============================
 
 
     private void LoadSession()
@@ -271,7 +319,6 @@ public partial class MainWindow : Window
 
 
         }
-
         else
         {
 
@@ -290,24 +337,32 @@ public partial class MainWindow : Window
 
 
 
+
+
+
+    // ===============================
+    // LOGIN
+    // ===============================
+
+
     public void LoginSuccess(
-        string token)
+        string jwtToken)
     {
 
 
         currentToken =
-            token;
+            jwtToken;
 
 
 
         sessionManager.SaveSession(
-            token
+            jwtToken
         );
 
 
 
         SecurityLogger.Security(
-            "Login success"
+            "Login Success"
         );
 
 
@@ -316,6 +371,12 @@ public partial class MainWindow : Window
 
 
 
+
+
+
+    // ===============================
+    // LOGOUT
+    // ===============================
 
 
     public void Logout()
@@ -331,7 +392,7 @@ public partial class MainWindow : Window
 
 
         SecurityLogger.Security(
-            "Logout success"
+            "Logout Success"
         );
 
 
@@ -343,9 +404,10 @@ public partial class MainWindow : Window
 
 
 
-    // =====================================
-    // UPDATE BUTTON
-    // =====================================
+
+    // ===============================
+    // START UPDATE
+    // ===============================
 
 
     private async void UpdateButton_Click(
@@ -364,11 +426,11 @@ public partial class MainWindow : Window
 
 
 
-        UpdateButton.IsEnabled=false;
+        UpdateButton.IsEnabled = false;
 
-        PauseButton.IsEnabled=true;
+        PauseButton.IsEnabled = true;
 
-        ResumeButton.IsEnabled=true;
+        ResumeButton.IsEnabled = true;
 
 
 
@@ -378,10 +440,12 @@ public partial class MainWindow : Window
 
             await StartUpdate();
 
+
         }
 
         catch(Exception ex)
         {
+
 
             SecurityLogger.Error(
                 ex.Message
@@ -395,19 +459,20 @@ public partial class MainWindow : Window
 
         }
 
+
         finally
         {
 
 
-            isUpdating=false;
+            isUpdating = false;
 
 
 
-            UpdateButton.IsEnabled=true;
+            UpdateButton.IsEnabled = true;
 
-            PauseButton.IsEnabled=false;
+            PauseButton.IsEnabled = false;
 
-            ResumeButton.IsEnabled=false;
+            ResumeButton.IsEnabled = false;
 
 
         }
@@ -421,36 +486,41 @@ public partial class MainWindow : Window
 
 
 
-    // =====================================
-    // UPDATE SECURITY FLOW
-    // =====================================
+
+
+    // ===============================
+    // UPDATE FLOW
+    // ===============================
 
 
     private async Task StartUpdate()
     {
 
 
-        // ANTI CHEAT CHECK BEFORE UPDATE
-
-
         SecurityLogger.Security(
-            "Anti Cheat Scan"
+            "Security Scan Before Update"
         );
 
 
+
+
+
+        // ANTI CHEAT CHECK
 
         if(!antiCheat.CheckSafe())
         {
 
 
             SecurityLogger.Error(
-                "Cheat process detected"
+                "Anti Cheat Violation"
             );
+
 
 
             MessageBox.Show(
                 "Security violation detected"
             );
+
 
 
             return;
@@ -463,19 +533,23 @@ public partial class MainWindow : Window
 
 
 
-        // SESSION CHECK
+        // INTEGRITY CHECK
 
 
-        if(currentToken == null)
+        if(!shield.RunSecurityCheck())
         {
 
 
-            SecurityLogger.Warning(
-                "No session before update"
+            SecurityLogger.Error(
+                "Integrity Failed"
             );
 
 
+            return;
+
+
         }
+
 
 
 
@@ -495,8 +569,12 @@ public partial class MainWindow : Window
 
 
 
+
+
         var manifest =
             await updateService.GetManifest();
+
+
 
 
 
@@ -517,7 +595,11 @@ public partial class MainWindow : Window
 
             return;
 
+
         }
+
+
+
 
 
 
@@ -535,9 +617,12 @@ public partial class MainWindow : Window
 
 
 
+
             var progress =
-            new Progress<DownloadProgressInfo>(p =>
+            new Progress<DownloadProgressInfo>(
+            p =>
             {
+
 
                 Progress.Value =
                     p.Percentage;
@@ -559,13 +644,14 @@ public partial class MainWindow : Window
 
 
 
+
+
             await downloader.Download(
-
                 file,
-
                 progress
-
             );
+
+
 
 
 
@@ -581,12 +667,15 @@ public partial class MainWindow : Window
 
 
 
+
+
+
         Progress.Value = 100;
 
 
 
         SecurityLogger.Security(
-            "Update Complete"
+            "UPDATE COMPLETE"
         );
 
 
@@ -602,9 +691,12 @@ public partial class MainWindow : Window
 
 
 
-    // =====================================
+
+
+
+    // ===============================
     // PAUSE
-    // =====================================
+    // ===============================
 
 
     private void Pause_Click(
@@ -622,6 +714,10 @@ public partial class MainWindow : Window
         );
 
 
+        DownloadText.Text =
+            "Paused";
+
+
     }
 
 
@@ -629,9 +725,12 @@ public partial class MainWindow : Window
 
 
 
-    // =====================================
+
+
+
+    // ===============================
     // RESUME
-    // =====================================
+    // ===============================
 
 
     private void Resume_Click(
@@ -649,7 +748,12 @@ public partial class MainWindow : Window
         );
 
 
+        DownloadText.Text =
+            "Resumed";
+
+
     }
+
 
 
 }
