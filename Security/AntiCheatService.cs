@@ -1,30 +1,24 @@
 using System.Diagnostics;
-using NGPB.Launcher.Security;
 
 
-namespace NGPB.Launcher.Services;
+namespace NGPB.Launcher.Security;
 
 
 public class AntiCheatService
 {
 
 
-    private readonly string[] blockedProcess =
+    private readonly string[] blocked =
     {
 
         "cheatengine",
-
-        "dnspy",
-
-        "ollydbg",
-
+        "processhacker",
         "x64dbg",
-
-        "ida",
-
-        "processhacker"
+        "ollydbg"
 
     };
+
+
 
 
 
@@ -38,74 +32,9 @@ public class AntiCheatService
         );
 
 
-        ScanProcess();
-
-
     }
 
 
-
-
-
-
-    private void ScanProcess()
-    {
-
-
-        foreach(Process process 
-        in Process.GetProcesses())
-        {
-
-
-            try
-            {
-
-
-                string name =
-                    process.ProcessName
-                    .ToLower();
-
-
-
-                foreach(string block 
-                in blockedProcess)
-                {
-
-
-                    if(name.Contains(block))
-                    {
-
-
-                        SecurityLogger.Error(
-
-                            $"Blocked process detected : {name}"
-
-                        );
-
-
-
-                        process.Kill();
-
-
-
-                    }
-
-
-                }
-
-
-            }
-
-            catch
-            {
-
-            }
-
-
-        }
-
-
-    }
 
 
 
@@ -114,32 +43,35 @@ public class AntiCheatService
     public bool CheckSafe()
     {
 
-        foreach(Process process 
-        in Process.GetProcesses())
+
+        foreach(Process p in Process.GetProcesses())
         {
 
 
-            try
-            {
-
-
-                string name =
-                process.ProcessName
+            string name =
+                p.ProcessName
                 .ToLower();
 
 
 
-                foreach(string block 
-                in blockedProcess)
+
+            foreach(string bad in blocked)
+            {
+
+
+                if(name.Contains(bad))
                 {
 
 
-                    if(name.Contains(block))
-                    {
+                    SecurityLogger.Error(
 
-                        return false;
+                        "Blocked process : "
+                        + name
 
-                    }
+                    );
+
+
+                    return false;
 
 
                 }
@@ -147,14 +79,9 @@ public class AntiCheatService
 
             }
 
-            catch
-            {
-
-
-            }
-
 
         }
+
 
 
 
