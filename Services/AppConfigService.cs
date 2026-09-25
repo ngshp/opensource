@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text.Json;
 using NGPB.Launcher.Models;
 
@@ -10,7 +11,9 @@ public class AppConfigService
 
 
     private readonly string file =
-        "Secure/app.secure";
+        "app.secure";
+
+
 
 
 
@@ -18,29 +21,7 @@ public class AppConfigService
     {
 
 
-        try
-        {
-
-
-            if(!File.Exists(file))
-                return null;
-
-
-
-            string json =
-                File.ReadAllText(file);
-
-
-
-            return JsonSerializer
-                .Deserialize<AppConfig>(
-                    json
-                );
-
-
-        }
-
-        catch
+        if(!File.Exists(file))
         {
 
             return null;
@@ -48,7 +29,21 @@ public class AppConfigService
         }
 
 
+
+
+        string json =
+            File.ReadAllText(file);
+
+
+
+
+        return JsonSerializer.Deserialize<AppConfig>(
+            json
+        );
+
+
     }
+
 
 
 }
