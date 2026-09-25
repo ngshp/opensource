@@ -1,6 +1,8 @@
 using System.IO;
 using System.Text.Json;
+
 using NGPB.Launcher.Models;
+
 
 
 namespace NGPB.Launcher.Services;
@@ -21,25 +23,42 @@ public class AppConfigService
     {
 
 
-        if(!File.Exists(file))
+        try
+        {
+
+
+            if(!File.Exists(file))
+            {
+
+                return null;
+
+            }
+
+
+
+
+            string json =
+                File.ReadAllText(
+                    file
+                );
+
+
+
+
+
+            return JsonSerializer.Deserialize<AppConfig>(
+                json
+            );
+
+
+        }
+
+        catch
         {
 
             return null;
 
         }
-
-
-
-
-        string json =
-            File.ReadAllText(file);
-
-
-
-
-        return JsonSerializer.Deserialize<AppConfig>(
-            json
-        );
 
 
     }
