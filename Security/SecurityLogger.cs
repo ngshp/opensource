@@ -8,14 +8,15 @@ namespace NGPB.Launcher.Security;
 public static class SecurityLogger
 {
 
-    private static readonly object locker = new();
-
 
     private static readonly string folder =
         Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
-            "Logs"
+            Environment.GetFolderPath(
+                Environment.SpecialFolder.ApplicationData),
+            "NGPB",
+            "logs"
         );
+
 
 
     private static readonly string file =
@@ -26,28 +27,61 @@ public static class SecurityLogger
 
 
 
-    public static void Info(string msg)
+
+    static SecurityLogger()
     {
-        Write("INFO", msg);
+
+        Directory.CreateDirectory(folder);
+
     }
 
 
-    public static void Security(string msg)
+
+
+
+
+
+    public static void Info(string message)
     {
-        Write("SECURITY", msg);
+
+        Write(
+            "INFO",
+            message
+        );
+
     }
 
 
-    public static void Warning(string msg)
+
+
+
+
+    public static void Security(string message)
     {
-        Write("WARNING", msg);
+
+        Write(
+            "SECURITY",
+            message
+        );
+
     }
 
 
-    public static void Error(string msg)
+
+
+
+
+    public static void Error(string message)
     {
-        Write("ERROR", msg);
+
+        Write(
+            "ERROR",
+            message
+        );
+
     }
+
+
 
 
 
@@ -55,30 +89,21 @@ public static class SecurityLogger
 
     private static void Write(
         string level,
-        string msg)
+        string message)
     {
+
 
         try
         {
 
-            lock(locker)
-            {
+            File.AppendAllText(
 
-                Directory.CreateDirectory(folder);
+                file,
 
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{level}] {message}\n"
 
-                string line =
-                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{level}] {msg}"
-                + Environment.NewLine;
+            );
 
-
-
-                File.AppendAllText(
-                    file,
-                    line
-                );
-
-            }
 
         }
 
@@ -87,7 +112,9 @@ public static class SecurityLogger
 
         }
 
+
     }
+
 
 
 }
