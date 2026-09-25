@@ -8,7 +8,8 @@ namespace NGPB.Launcher.Security;
 public class MainSecure
 {
 
-    private readonly string securePath =
+
+    private readonly string path =
         "Secure/main.secure";
 
 
@@ -16,46 +17,33 @@ public class MainSecure
     public bool Validate()
     {
 
+
         try
         {
 
-            if(!File.Exists(securePath))
+
+            if(!File.Exists(path))
             {
 
-                CreateSecureFile();
+                Create();
 
             }
 
 
 
             byte[] data =
-                File.ReadAllBytes(
-                    securePath
-                );
+                File.ReadAllBytes(path);
 
 
 
-            if(data.Length < 64)
-            {
-
-                return false;
-
-            }
-
-
-
-            SecurityLogger.Security(
-                "main.secure validation OK"
-            );
-
-
-            return true;
+            return data.Length >= 64;
 
 
         }
 
         catch(Exception ex)
         {
+
 
             SecurityLogger.Error(
                 ex.Message
@@ -73,7 +61,7 @@ public class MainSecure
 
 
 
-    private void CreateSecureFile()
+    private void Create()
     {
 
 
@@ -83,7 +71,7 @@ public class MainSecure
 
 
 
-        byte[] secureData =
+        byte[] data =
             RandomNumberGenerator.GetBytes(
                 64
             );
@@ -91,12 +79,10 @@ public class MainSecure
 
 
         File.WriteAllBytes(
-
-            securePath,
-
-            secureData
-
+            path,
+            data
         );
+
 
 
         SecurityLogger.Info(
