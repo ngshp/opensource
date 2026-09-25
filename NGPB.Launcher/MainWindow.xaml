@@ -19,8 +19,43 @@ AllowsTransparency="True"
 Background="Transparent">
 
 
-
 <Window.Resources>
+
+
+    <!-- FADE IN -->
+
+    <Storyboard x:Key="FadeIn">
+
+        <DoubleAnimation
+
+            Storyboard.TargetProperty="Opacity"
+
+            From="0"
+
+            To="1"
+
+            Duration="0:0:1"/>
+
+    </Storyboard>
+
+
+
+    <!-- FADE OUT -->
+
+    <Storyboard x:Key="FadeOut">
+
+        <DoubleAnimation
+
+            Storyboard.TargetProperty="Opacity"
+
+            From="1"
+
+            To="0"
+
+            Duration="0:0:1"/>
+
+    </Storyboard>
+
 
 
     <!-- BUTTON STYLE -->
@@ -30,19 +65,19 @@ Background="Transparent">
 
 
         <Setter Property="Background"
-                Value="#16283D"/>
+                Value="#152A42"/>
 
 
         <Setter Property="Foreground"
                 Value="White"/>
 
 
-        <Setter Property="BorderThickness"
-                Value="0"/>
-
-
         <Setter Property="FontWeight"
                 Value="Bold"/>
+
+
+        <Setter Property="BorderThickness"
+                Value="0"/>
 
 
         <Setter Property="Cursor"
@@ -51,7 +86,9 @@ Background="Transparent">
 
         <Setter Property="Template">
 
+
             <Setter.Value>
+
 
                 <ControlTemplate TargetType="Button">
 
@@ -75,6 +112,7 @@ Background="Transparent">
 
                 </ControlTemplate>
 
+
             </Setter.Value>
 
 
@@ -91,27 +129,55 @@ Background="Transparent">
 
 
 
+
 <Grid>
 
 
-<!-- BACKGROUND -->
+
+
+
+<!-- ==========================
+     BACKGROUND VIDEO
+========================== -->
+
+
+<MediaElement
+
+x:Name="BackgroundVideo"
+
+Source="Assets/background.mp4"
+
+LoadedBehavior="Manual"
+
+UnloadedBehavior="Stop"
+
+Stretch="UniformToFill"
+
+Volume="0"/>
+
+
+
+
+
+<!-- DARK OVERLAY -->
+
 
 <Border
 
-CornerRadius="20"
-
-Background="#07121F">
-
-
-</Border>
+Background="#B8050B14"/>
 
 
 
 
 
-<!-- MAIN -->
 
-<Grid Margin="30">
+<!-- ==========================
+     MAIN UI
+========================== -->
+
+
+<Grid Margin="35">
+
 
 
 <Grid.RowDefinitions>
@@ -120,9 +186,11 @@ Background="#07121F">
 
 <RowDefinition/>
 
-<RowDefinition Height="80"/>
+<RowDefinition Height="70"/>
 
 </Grid.RowDefinitions>
+
+
 
 
 
@@ -160,6 +228,7 @@ Height="80"/>
 
 
 
+
 <StackPanel Margin="20,0,0,0">
 
 
@@ -167,20 +236,23 @@ Height="80"/>
 
 Text="NG PB"
 
-FontSize="36"
+FontSize="38"
 
 FontWeight="Bold"
 
 Foreground="White"/>
 
 
+
+
 <TextBlock
 
 Text="SECURE GAME LAUNCHER"
 
-FontSize="14"
+Foreground="#6EA8FF"
 
-Foreground="#6EA8FF"/>
+FontSize="14"/>
+
 
 
 </StackPanel>
@@ -194,13 +266,15 @@ Foreground="#6EA8FF"/>
 
 
 
-<!-- SERVER -->
+
+<!-- SERVER BOX -->
+
 
 <Border
 
 Grid.Column="1"
 
-Background="#101D2E"
+Background="#99102030"
 
 CornerRadius="12"
 
@@ -212,9 +286,10 @@ Padding="15">
 
 <TextBlock
 
-Text="SERVER STATUS"
+Text="SERVER"
 
 Foreground="Gray"/>
+
 
 
 
@@ -224,14 +299,16 @@ x:Name="ServerStatus"
 
 Text="ONLINE"
 
-FontSize="22"
-
 Foreground="#00FF88"
+
+FontSize="22"
 
 FontWeight="Bold"/>
 
 
+
 </StackPanel>
+
 
 
 </Border>
@@ -247,17 +324,18 @@ FontWeight="Bold"/>
 
 
 
+
 <!-- CENTER -->
+
 
 <Grid Grid.Row="1">
 
 
-
 <StackPanel
 
-HorizontalAlignment="Center"
+VerticalAlignment="Center"
 
-VerticalAlignment="Center">
+HorizontalAlignment="Center">
 
 
 
@@ -269,7 +347,7 @@ Text="WELCOME TO POINT BLANK NG"
 
 Foreground="White"
 
-FontSize="28"
+FontSize="30"
 
 FontWeight="Bold"
 
@@ -283,13 +361,11 @@ HorizontalAlignment="Center"/>
 
 Text="Secure Update System"
 
-Foreground="#8EA8C8"
+Foreground="#9AB4D0"
 
-FontSize="16"
+Margin="0,10,0,30"
 
-HorizontalAlignment="Center"
-
-Margin="0,5,0,30"/>
+HorizontalAlignment="Center"/>
 
 
 
@@ -297,16 +373,15 @@ Margin="0,5,0,30"/>
 
 
 
-<!-- DOWNLOAD INFO -->
 
 
 <Border
 
-Background="#101D2E"
-
-CornerRadius="12"
-
 Width="650"
+
+Background="#AA101D2E"
+
+CornerRadius="15"
 
 Padding="20">
 
@@ -332,18 +407,19 @@ TextAlignment="Center"/>
 
 
 
+
+
 <ProgressBar
 
 x:Name="Progress"
 
 Height="25"
 
-Margin="0,20,0,0"
-
 Minimum="0"
 
-Maximum="100"/>
+Maximum="100"
 
+Margin="0,20,0,0"/>
 
 
 
@@ -360,7 +436,6 @@ Maximum="100"/>
 
 
 <!-- BUTTON -->
-
 
 <StackPanel
 
@@ -410,8 +485,6 @@ Height="55"
 
 Margin="15,0"
 
-FontSize="16"
-
 Click="Pause_Click"/>
 
 
@@ -432,8 +505,6 @@ Width="120"
 
 Height="55"
 
-FontSize="16"
-
 Click="Resume_Click"/>
 
 
@@ -444,12 +515,13 @@ Click="Resume_Click"/>
 
 
 
-
-
 </StackPanel>
 
 
+
 </Grid>
+
+
 
 
 
@@ -464,34 +536,28 @@ Click="Resume_Click"/>
 <Grid Grid.Row="2">
 
 
-<StackPanel
-
-HorizontalAlignment="Center">
+<StackPanel HorizontalAlignment="Center">
 
 
 <TextBlock
 
 Text="NG PB Launcher © 2026"
 
-Foreground="Gray"
-
-FontSize="14"/>
+Foreground="Gray"/>
 
 
 
 <TextBlock
 
-Text="Secure Client • Anti Cheat • SHA256 Verification"
+Text="Anti Cheat • SHA256 • Secure Update"
 
-Foreground="#6EA8FF"
+Foreground="#6EA8FF"/>
 
-FontSize="12"/>
 
 
 </StackPanel>
 
 
-
 </Grid>
 
 
@@ -499,6 +565,106 @@ FontSize="12"/>
 
 
 </Grid>
+
+
+
+
+
+
+
+
+
+<!-- ==========================
+     LOADING SCREEN
+========================== -->
+
+
+<Grid
+
+x:Name="LoadingScreen"
+
+Background="#DD050B14">
+
+
+
+
+
+<StackPanel
+
+HorizontalAlignment="Center"
+
+VerticalAlignment="Center">
+
+
+
+
+
+<Image
+
+Source="Assets/logo.png"
+
+Width="130"
+
+Height="130"/>
+
+
+
+
+
+<TextBlock
+
+Text="NG PB"
+
+FontSize="50"
+
+FontWeight="Bold"
+
+Foreground="White"
+
+HorizontalAlignment="Center"/>
+
+
+
+
+
+
+<TextBlock
+
+x:Name="LoadingText"
+
+Text="Initializing Security..."
+
+Foreground="#6EA8FF"
+
+FontSize="18"
+
+Margin="0,20"/>
+
+
+
+
+
+
+<ProgressBar
+
+Width="350"
+
+Height="15"
+
+IsIndeterminate="True"/>
+
+
+
+
+
+
+</StackPanel>
+
+
+</Grid>
+
+
+
 
 
 </Grid>
