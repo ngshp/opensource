@@ -5,13 +5,28 @@ public class AppConfig
 {
 
 
-    public string ApiUrl {get;set;} = "";
+    public string ApiUrl { get; set; } = "";
 
-    public string PatchUrl {get;set;} = "";
 
-    public string Version {get;set;} = "";
 
-    public string ServerName {get;set;} = "";
+    public string LoginEndpoint { get; set; } = "";
+
+
+
+    public string PatchUrl { get; set; } = "";
+
+
+
+    public string Version { get; set; } = "";
+
+
+
+    public string ServerName { get; set; } = "";
+
+
+
+    public bool Maintenance { get; set; }
+
 
 
 }
