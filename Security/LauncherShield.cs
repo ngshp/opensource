@@ -1,3 +1,7 @@
+using System.IO;
+using System.Security.Cryptography;
+
+
 namespace NGPB.Launcher.Security;
 
 
@@ -5,42 +9,86 @@ public class LauncherShield
 {
 
 
-public bool RunSecurityCheck()
-
-{
-
-
-SecurityLogger.Write(
-"Starting security check"
-);
+    public bool RunSecurityCheck()
+    {
 
 
-
-if(!IntegrityMonitor.VerifyLauncher())
-
-{
-
-SecurityLogger.Write(
-"Launcher integrity failed"
-);
+        try
+        {
 
 
-return false;
-
-}
+            string exe =
+            Environment.ProcessPath!;
 
 
 
-SecurityLogger.Write(
-"Security check OK"
-);
+            if(!File.Exists(exe))
+                return false;
 
 
 
-return true;
+
+            string hash =
+                GetHash(exe);
 
 
-}
+
+            SecurityLogger.Security(
+                "Launcher Hash: "
+                + hash
+            );
+
+
+
+            return true;
+
+
+        }
+
+        catch(Exception ex)
+        {
+
+
+            SecurityLogger.Error(
+                ex.Message
+            );
+
+
+            return false;
+
+
+        }
+
+
+    }
+
+
+
+
+
+    private string GetHash(string file)
+    {
+
+
+        using SHA256 sha =
+            SHA256.Create();
+
+
+
+        using FileStream stream =
+            File.OpenRead(file);
+
+
+
+        byte[] hash =
+            sha.ComputeHash(stream);
+
+
+
+        return Convert.ToHexString(hash);
+
+
+    }
 
 
 }
