@@ -1,5 +1,4 @@
 using System.IO;
-using System.Security.Cryptography;
 
 
 namespace NGPB.Launcher.Security;
@@ -9,8 +8,9 @@ public class MainSecure
 {
 
 
-    private readonly string path =
-        "Secure/main.secure";
+    private readonly string secureFile =
+        "main.secure";
+
 
 
 
@@ -18,79 +18,53 @@ public class MainSecure
     {
 
 
-        try
-        {
-
-
-            if(!File.Exists(path))
-            {
-
-                Create();
-
-            }
-
-
-
-            byte[] data =
-                File.ReadAllBytes(path);
-
-
-
-            return data.Length >= 64;
-
-
-        }
-
-        catch(Exception ex)
+        if(!File.Exists(secureFile))
         {
 
 
             SecurityLogger.Error(
-                ex.Message
+                "main.secure missing"
             );
 
 
             return false;
 
+
         }
 
 
-    }
 
 
-
-
-
-    private void Create()
-    {
-
-
-        Directory.CreateDirectory(
-            "Secure"
-        );
-
-
-
-        byte[] data =
-            RandomNumberGenerator.GetBytes(
-                64
+        string data =
+            File.ReadAllText(
+                secureFile
             );
 
 
 
-        File.WriteAllBytes(
-            path,
-            data
-        );
+
+        if(string.IsNullOrWhiteSpace(data))
+        {
+
+
+            SecurityLogger.Error(
+                "main.secure invalid"
+            );
+
+
+            return false;
+
+
+        }
 
 
 
-        SecurityLogger.Info(
-            "main.secure created"
-        );
+
+        return true;
 
 
     }
+
 
 
 }
