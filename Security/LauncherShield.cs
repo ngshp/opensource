@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Security.Cryptography;
 
@@ -18,24 +19,33 @@ public class LauncherShield
 
 
             string exe =
-            Environment.ProcessPath!;
+                Environment.ProcessPath!;
 
 
 
             if(!File.Exists(exe))
+            {
+
                 return false;
+
+            }
+
 
 
 
 
             string hash =
-                GetHash(exe);
+                CalculateHash(exe);
+
+
 
 
 
             SecurityLogger.Security(
-                "Launcher Hash: "
+
+                "Launcher SHA256 : "
                 + hash
+
             );
 
 
@@ -66,7 +76,10 @@ public class LauncherShield
 
 
 
-    private string GetHash(string file)
+
+
+    private string CalculateHash(
+        string file)
     {
 
 
@@ -75,8 +88,10 @@ public class LauncherShield
 
 
 
+
         using FileStream stream =
             File.OpenRead(file);
+
 
 
 
@@ -85,10 +100,12 @@ public class LauncherShield
 
 
 
+
         return Convert.ToHexString(hash);
 
 
     }
+
 
 
 }
