@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media.Animation;
 
 using NGPB.Launcher.Models;
 using NGPB.Launcher.Services;
@@ -15,7 +16,7 @@ public partial class MainWindow : Window
 
 
     // ===============================
-    // UPDATE SERVICES
+    // UPDATE SERVICE
     // ===============================
 
     private readonly PatchDownloader downloader;
@@ -25,7 +26,7 @@ public partial class MainWindow : Window
 
 
     // ===============================
-    // SECURITY SERVICES
+    // SECURITY
     // ===============================
 
     private readonly LauncherShield shield;
@@ -46,7 +47,6 @@ public partial class MainWindow : Window
 
 
 
-
     // ===============================
     // SESSION
     // ===============================
@@ -64,20 +64,36 @@ public partial class MainWindow : Window
 
 
 
+
     // ===============================
     // CONSTRUCTOR
     // ===============================
 
+
     public MainWindow()
     {
 
+
         InitializeComponent();
+
+
+
+        // VIDEO START
+
+        BackgroundVideo.Play();
+
+
+
+        LoadingText.Text =
+            "Starting NGPB Launcher...";
 
 
 
         SecurityLogger.Info(
             "NGPB Launcher Starting"
         );
+
+
 
 
 
@@ -88,6 +104,8 @@ public partial class MainWindow : Window
 
         updateService =
             new UpdateService();
+
+
 
 
 
@@ -109,8 +127,11 @@ public partial class MainWindow : Window
 
 
 
+
+
         configService =
             new AppConfigService();
+
 
 
 
@@ -122,9 +143,15 @@ public partial class MainWindow : Window
 
 
 
+
         // ===============================
-        // MAIN.SECURE CHECK
+        // MAIN.SECURE
         // ===============================
+
+
+        LoadingText.Text =
+            "Checking Security...";
+
 
 
         if(!mainSecure.Validate())
@@ -132,7 +159,7 @@ public partial class MainWindow : Window
 
 
             SecurityLogger.Error(
-                "main.secure validation failed"
+                "main.secure failed"
             );
 
 
@@ -145,6 +172,7 @@ public partial class MainWindow : Window
 
             return;
 
+
         }
 
 
@@ -152,9 +180,17 @@ public partial class MainWindow : Window
 
 
 
+
+
+
         // ===============================
-        // LOAD APP.SECURE
+        // APP.SECURE
         // ===============================
+
+
+        LoadingText.Text =
+            "Loading Configuration...";
+
 
 
         LoadAppConfig();
@@ -164,9 +200,16 @@ public partial class MainWindow : Window
 
 
 
+
+
         // ===============================
-        // LOAD SESSION.SECURE
+        // SESSION
         // ===============================
+
+
+        LoadingText.Text =
+            "Loading Session...";
+
 
 
         LoadSession();
@@ -178,8 +221,13 @@ public partial class MainWindow : Window
 
 
         // ===============================
-        // LAUNCHER INTEGRITY
+        // INTEGRITY
         // ===============================
+
+
+        LoadingText.Text =
+            "Checking Launcher Integrity...";
+
 
 
         if(!shield.RunSecurityCheck())
@@ -187,13 +235,15 @@ public partial class MainWindow : Window
 
 
             SecurityLogger.Error(
-                "Launcher integrity failed"
+                "Integrity Failed"
             );
+
 
 
             MessageBox.Show(
                 "Launcher Modified"
             );
+
 
 
             Application.Current.Shutdown();
@@ -208,12 +258,21 @@ public partial class MainWindow : Window
 
 
 
+
+
         // ===============================
-        // ANTI CHEAT START
+        // ANTI CHEAT
         // ===============================
+
+
+        LoadingText.Text =
+            "Starting Anti Cheat...";
+
 
 
         antiCheat.Initialize();
+
+
 
 
 
@@ -226,12 +285,21 @@ public partial class MainWindow : Window
 
 
 
+
         SecurityLogger.Security(
             "NGPB Launcher Ready"
         );
 
 
+
+
+
+        FadeOutLoading();
+
+
+
     }
+
 
 
 
@@ -255,6 +323,7 @@ public partial class MainWindow : Window
 
 
 
+
         if(appConfig == null)
         {
 
@@ -264,13 +333,14 @@ public partial class MainWindow : Window
             );
 
 
+
             MessageBox.Show(
-                "Config Missing"
+                "Configuration Error"
             );
 
 
-            Application.Current.Shutdown();
 
+            Application.Current.Shutdown();
 
             return;
 
@@ -309,12 +379,13 @@ public partial class MainWindow : Window
 
 
 
+
         if(currentToken != null)
         {
 
 
             SecurityLogger.Security(
-                "session.secure restored"
+                "Session Restored"
             );
 
 
@@ -324,7 +395,7 @@ public partial class MainWindow : Window
 
 
             SecurityLogger.Info(
-                "No active session"
+                "No Session"
             );
 
 
@@ -332,6 +403,7 @@ public partial class MainWindow : Window
 
 
     }
+
 
 
 
@@ -374,6 +446,8 @@ public partial class MainWindow : Window
 
 
 
+
+
     // ===============================
     // LOGOUT
     // ===============================
@@ -392,11 +466,12 @@ public partial class MainWindow : Window
 
 
         SecurityLogger.Security(
-            "Logout Success"
+            "Logout"
         );
 
 
     }
+
 
 
 
@@ -435,8 +510,10 @@ public partial class MainWindow : Window
 
 
 
+
         try
         {
+
 
             await StartUpdate();
 
@@ -458,7 +535,6 @@ public partial class MainWindow : Window
 
 
         }
-
 
         finally
         {
@@ -489,7 +565,7 @@ public partial class MainWindow : Window
 
 
     // ===============================
-    // UPDATE FLOW
+    // UPDATE PROCESS
     // ===============================
 
 
@@ -505,8 +581,6 @@ public partial class MainWindow : Window
 
 
 
-        // ANTI CHEAT CHECK
-
         if(!antiCheat.CheckSafe())
         {
 
@@ -516,11 +590,9 @@ public partial class MainWindow : Window
             );
 
 
-
             MessageBox.Show(
-                "Security violation detected"
+                "Security Violation"
             );
-
 
 
             return;
@@ -532,8 +604,6 @@ public partial class MainWindow : Window
 
 
 
-
-        // INTEGRITY CHECK
 
 
         if(!shield.RunSecurityCheck())
@@ -556,18 +626,9 @@ public partial class MainWindow : Window
 
 
 
-        SecurityLogger.Info(
-            "Update Started"
-        );
-
-
 
         DownloadText.Text =
             "Checking Update...";
-
-
-
-
 
 
 
@@ -583,13 +644,8 @@ public partial class MainWindow : Window
         {
 
 
-            SecurityLogger.Error(
-                "Manifest unavailable"
-            );
-
-
             MessageBox.Show(
-                "Manifest tidak tersedia"
+                "Manifest unavailable"
             );
 
 
@@ -604,17 +660,13 @@ public partial class MainWindow : Window
 
 
 
-
         foreach(PatchFile file in manifest.Files)
         {
 
 
-            SecurityLogger.Info(
 
-                $"Downloading {file.Name}"
-
-            );
-
+            DownloadText.Text =
+                $"Downloading {file.Name}";
 
 
 
@@ -638,7 +690,9 @@ public partial class MainWindow : Window
                 $"{p.Speed:F2} MB/s";
 
 
+
             });
+
 
 
 
@@ -654,11 +708,8 @@ public partial class MainWindow : Window
 
 
 
-
             SecurityLogger.Security(
-
                 $"Download Complete {file.Name}"
-
             );
 
 
@@ -674,14 +725,14 @@ public partial class MainWindow : Window
 
 
 
+        DownloadText.Text =
+            "UPDATE COMPLETE";
+
+
+
         SecurityLogger.Security(
             "UPDATE COMPLETE"
         );
-
-
-
-        DownloadText.Text =
-            "UPDATE COMPLETE";
 
 
     }
@@ -709,13 +760,14 @@ public partial class MainWindow : Window
 
 
 
+        DownloadText.Text =
+            "Paused";
+
+
+
         SecurityLogger.Info(
             "Download Paused"
         );
-
-
-        DownloadText.Text =
-            "Paused";
 
 
     }
@@ -743,13 +795,76 @@ public partial class MainWindow : Window
 
 
 
+        DownloadText.Text =
+            "Resumed";
+
+
+
         SecurityLogger.Info(
             "Download Resumed"
         );
 
 
-        DownloadText.Text =
-            "Resumed";
+    }
+
+
+
+
+
+
+
+
+
+    // ===============================
+    // LOADING ANIMATION
+    // ===============================
+
+
+    private void FadeOutLoading()
+    {
+
+
+        DoubleAnimation fade =
+            new DoubleAnimation();
+
+
+
+        fade.From = 1;
+
+        fade.To = 0;
+
+
+
+        fade.Duration =
+            new Duration(
+                TimeSpan.FromSeconds(1)
+            );
+
+
+
+
+
+        fade.Completed +=
+        (s,e)=>
+        {
+
+
+            LoadingScreen.Visibility =
+                Visibility.Collapsed;
+
+
+        };
+
+
+
+
+
+
+        LoadingScreen.BeginAnimation(
+            OpacityProperty,
+            fade
+        );
+
 
 
     }
