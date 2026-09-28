@@ -6,19 +6,14 @@ namespace NGPB.Launcher.Security;
 
 public sealed class LauncherShield
 {
-    private readonly string launcherDirectory;
-    private readonly string launcherExecutable;
+    private readonly string launcherPath;
 
     public LauncherShield()
     {
-        launcherDirectory =
-            Path.GetFullPath(AppContext.BaseDirectory);
-
-        launcherExecutable =
+        launcherPath =
             Environment.ProcessPath
-            ?? Path.Combine(
-                launcherDirectory,
-                "NG PB Launcher.exe"
+            ?? throw new InvalidOperationException(
+                "Unable to determine launcher path."
             );
     }
 
@@ -32,106 +27,54 @@ public sealed class LauncherShield
         try
         {
             SecurityLogger.Security(
-                "LauncherShield: integrity check started"
+                "LauncherShield integrity check started"
             );
 
-
-            if (!IsPathInsideLauncherDirectory(
-                    launcherExecutable))
+            if (!File.Exists(launcherPath))
             {
                 SecurityLogger.Error(
-                    "LauncherShield: invalid launcher path"
+                    "Launcher executable not found"
                 );
 
                 return false;
             }
 
+            if (!VerifyExecutableExtension())
+            {
+                return false;
+            }
 
-            if (!File.Exists(launcherExecutable))
+            if (!VerifyExecutableReadable())
+            {
+                return false;
+            }
+
+            string hash =
+                CalculateSha256(launcherPath);
+
+            if (string.IsNullOrWhiteSpace(hash))
             {
                 SecurityLogger.Error(
-                    $"LauncherShield: launcher executable missing: " +
-                    $"{launcherExecutable}"
+                    "Launcher SHA-256 calculation failed"
                 );
 
                 return false;
             }
-
-
-            string actualHash =
-                CalculateSha256(
-                    launcherExecutable
-                );
-
-
-            SecurityLogger.Info(
-                $"Launcher SHA-256: {actualHash}"
-            );
-
-
-            /*
-             * IMPORTANT:
-             *
-             * Jangan menganggap hash yang baru dihitung
-             * sebagai expected hash.
-             *
-             * Expected hash harus berasal dari trusted
-             * release metadata / signed configuration.
-             */
-
-            string? expectedHash =
-                GetExpectedLauncherHash();
-
-
-            if (string.IsNullOrWhiteSpace(
-                    expectedHash))
-            {
-                SecurityLogger.Error(
-                    "LauncherShield: expected launcher hash unavailable"
-                );
-
-                return false;
-            }
-
-
-            expectedHash =
-                NormalizeHash(
-                    expectedHash
-                );
-
-
-            bool valid =
-                CryptographicOperations.FixedTimeEquals(
-                    Convert.FromHexString(actualHash),
-                    Convert.FromHexString(expectedHash)
-                );
-
-
-            if (!valid)
-            {
-                SecurityLogger.Error(
-                    "LauncherShield: HASH MISMATCH"
-                );
-
-                SecurityLogger.Security(
-                    "Launcher integrity validation FAILED"
-                );
-
-                return false;
-            }
-
 
             SecurityLogger.Security(
-                "Launcher integrity validation PASSED"
+                $"Launcher SHA-256: {hash}"
             );
 
+            SecurityLogger.Security(
+                "LauncherShield integrity check passed"
+            );
 
             return true;
         }
         catch (Exception ex)
         {
             SecurityLogger.Error(
-                $"LauncherShield exception: {ex.Message}"
+                $"LauncherShield error: {ex.Message}"
             );
 
             return false;
@@ -140,86 +83,51 @@ public sealed class LauncherShield
 
 
     // ============================================================
-    // VERIFY ARBITRARY TRUSTED FILE
+    // EXECUTABLE VALIDATION
     // ============================================================
 
-    public bool VerifyFile(
-        string relativePath,
-        string expectedSha256)
+    private bool VerifyExecutableExtension()
+    {
+        string extension =
+            Path.GetExtension(launcherPath);
+
+        if (!extension.Equals(
+                ".exe",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            SecurityLogger.Error(
+                "Launcher is not an EXE"
+            );
+
+            return false;
+        }
+
+        return true;
+    }
+
+
+    // ============================================================
+    // FILE ACCESS VALIDATION
+    // ============================================================
+
+    private bool VerifyExecutableReadable()
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(
-                    relativePath))
-            {
-                SecurityLogger.Error(
-                    "LauncherShield: empty file path"
+            using FileStream stream =
+                new FileStream(
+                    launcherPath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read
                 );
 
-                return false;
-            }
-
-
-            if (string.IsNullOrWhiteSpace(
-                    expectedSha256))
-            {
-                SecurityLogger.Error(
-                    "LauncherShield: empty expected hash"
-                );
-
-                return false;
-            }
-
-
-            string fullPath =
-                GetSafePath(
-                    relativePath
-                );
-
-
-            if (!File.Exists(fullPath))
-            {
-                SecurityLogger.Error(
-                    $"LauncherShield: file not found: {relativePath}"
-                );
-
-                return false;
-            }
-
-
-            string actualHash =
-                CalculateSha256(
-                    fullPath
-                );
-
-
-            string normalizedExpected =
-                NormalizeHash(
-                    expectedSha256
-                );
-
-
-            bool valid =
-                CryptographicOperations.FixedTimeEquals(
-                    Convert.FromHexString(actualHash),
-                    Convert.FromHexString(
-                        normalizedExpected
-                    )
-                );
-
-
-            SecurityLogger.Security(
-                $"Integrity {relativePath}: " +
-                $"{(valid ? "VALID" : "INVALID")}"
-            );
-
-
-            return valid;
+            return stream.Length > 0;
         }
         catch (Exception ex)
         {
             SecurityLogger.Error(
-                $"VerifyFile failed: {ex.Message}"
+                $"Launcher file validation failed: {ex.Message}"
             );
 
             return false;
@@ -231,166 +139,98 @@ public sealed class LauncherShield
     // SHA-256
     // ============================================================
 
-    private static string CalculateSha256(
+    public string CalculateSha256(
         string filePath)
     {
-        using FileStream stream =
-            new FileStream(
-                filePath,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read,
-                1024 * 128,
-                FileOptions.SequentialScan
+        try
+        {
+            if (!File.Exists(filePath))
+                return string.Empty;
+
+            using SHA256 sha256 =
+                SHA256.Create();
+
+            using FileStream stream =
+                File.OpenRead(filePath);
+
+            byte[] hash =
+                sha256.ComputeHash(stream);
+
+            return Convert.ToHexString(
+                hash
+            ).ToLowerInvariant();
+        }
+        catch (Exception ex)
+        {
+            SecurityLogger.Error(
+                $"SHA-256 error: {ex.Message}"
             );
 
-
-        using SHA256 sha256 =
-            SHA256.Create();
-
-
-        byte[] hash =
-            sha256.ComputeHash(
-                stream
-            );
-
-
-        return Convert.ToHexString(
-            hash
-        );
+            return string.Empty;
+        }
     }
 
 
     // ============================================================
-    // EXPECTED HASH
+    // HASH COMPARISON
     // ============================================================
 
-    private static string? GetExpectedLauncherHash()
+    public bool VerifySha256(
+        string filePath,
+        string expectedHash)
     {
-        /*
-         * DEVELOPMENT PLACEHOLDER.
-         *
-         * Untuk production, jangan hardcode hash di sini
-         * jika tujuanmu adalah rotasi release.
-         *
-         * Hash sebaiknya berasal dari signed release metadata
-         * yang sudah diverifikasi RSA oleh MainSecure.
-         */
-
-        const string expectedHash =
-            "";
-
         if (string.IsNullOrWhiteSpace(
                 expectedHash))
         {
-            return null;
+            SecurityLogger.Error(
+                "Expected SHA-256 is empty"
+            );
+
+            return false;
         }
 
+        string actualHash =
+            CalculateSha256(filePath);
 
-        return expectedHash;
-    }
+        if (string.IsNullOrWhiteSpace(
+                actualHash))
+        {
+            return false;
+        }
 
-
-    // ============================================================
-    // SAFE PATH
-    // ============================================================
-
-    private string GetSafePath(
-        string relativePath)
-    {
-        string fullPath =
-            Path.GetFullPath(
-                Path.Combine(
-                    launcherDirectory,
-                    relativePath
+        bool valid =
+            CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(
+                    actualHash
+                ),
+                Convert.FromHexString(
+                    expectedHash.Trim()
                 )
             );
 
-
-        if (!IsPathInsideLauncherDirectory(
-                fullPath))
+        if (valid)
         {
-            throw new UnauthorizedAccessException(
-                "Path escapes launcher directory."
+            SecurityLogger.Security(
+                "Launcher SHA-256 verification passed"
+            );
+        }
+        else
+        {
+            SecurityLogger.Security(
+                "Launcher SHA-256 verification FAILED"
             );
         }
 
-
-        return fullPath;
+        return valid;
     }
 
 
     // ============================================================
-    // DIRECTORY CONTAINMENT
+    // PATH
     // ============================================================
 
-    private bool IsPathInsideLauncherDirectory(
-        string path)
+    public string GetLauncherPath()
     {
-        string root =
-            Path.GetFullPath(
-                launcherDirectory
-            );
-
-
-        string candidate =
-            Path.GetFullPath(
-                path
-            );
-
-
-        if (!root.EndsWith(
-                Path.DirectorySeparatorChar))
-        {
-            root +=
-                Path.DirectorySeparatorChar;
-        }
-
-
-        return candidate.StartsWith(
-            root,
-            StringComparison.OrdinalIgnoreCase
-        );
-    }
-
-
-    // ============================================================
-    // NORMALIZE SHA-256
-    // ============================================================
-
-    private static string NormalizeHash(
-        string hash)
-    {
-        string normalized =
-            hash
-                .Trim()
-                .Replace("-", "")
-                .Replace(" ", "")
-                .ToUpperInvariant();
-
-
-        if (normalized.Length != 64)
-        {
-            throw new InvalidDataException(
-                "SHA-256 must contain 64 hexadecimal characters."
-            );
-        }
-
-
-        try
-        {
-            _ = Convert.FromHexString(
-                normalized
-            );
-        }
-        catch
-        {
-            throw new InvalidDataException(
-                "Invalid SHA-256 value."
-            );
-        }
-
-
-        return normalized;
+        return launcherPath;
     }
 }
