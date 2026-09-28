@@ -2,436 +2,387 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-
+using System.Text.Json;
 
 namespace NGPB.Launcher.Security;
 
-
-public class SessionManager
+public sealed class SessionManager
 {
+    private const string SessionFileName = "session.secure";
 
+    private readonly string sessionDirectory;
+    private readonly string sessionPath;
 
-    private readonly string sessionFile;
-
-
-    private readonly string folder;
-
-
-
+    private static readonly byte[] Entropy =
+        Encoding.UTF8.GetBytes(
+            "NGPB-Launcher-Session-v1"
+        );
 
 
     public SessionManager()
     {
-
-
-        folder =
+        sessionDirectory =
             Path.Combine(
                 Environment.GetFolderPath(
-                    Environment.SpecialFolder.ApplicationData
+                    Environment.SpecialFolder.LocalApplicationData
                 ),
-                "NGPB"
+                "NGPB",
+                "Launcher"
             );
 
-
-
-        if(!Directory.Exists(folder))
-        {
-
-            Directory.CreateDirectory(folder);
-
-        }
-
-
-
-
-        sessionFile =
+        sessionPath =
             Path.Combine(
-                folder,
-                "session.secure"
+                sessionDirectory,
+                SessionFileName
             );
-
-
     }
 
 
-
-
-
-
-
-    // =================================
+    // ============================================================
     // SAVE SESSION
-    // =================================
+    // ============================================================
 
-
-    public void SaveSession(
-        string token)
+    public bool SaveSession(
+        string jwtToken)
     {
-
-
         try
         {
+            if (string.IsNullOrWhiteSpace(jwtToken))
+            {
+                SecurityLogger.Error(
+                    "SessionManager: empty JWT"
+                );
+
+                return false;
+            }
 
 
-            byte[] encrypted =
-                Encrypt(
-                    token
+            Directory.CreateDirectory(
+                sessionDirectory
+            );
+
+
+            SessionData session =
+                new SessionData
+                {
+                    Token = jwtToken,
+
+                    CreatedUtc =
+                        DateTimeOffset.UtcNow,
+
+                    ExpiresUtc =
+                        GetJwtExpiration(jwtToken)
+                        ?? DateTimeOffset.UtcNow.AddDays(7)
+                };
+
+
+            string json =
+                JsonSerializer.Serialize(
+                    session
                 );
 
 
+            byte[] plainBytes =
+                Encoding.UTF8.GetBytes(
+                    json
+                );
 
-            File.WriteAllBytes(
-                sessionFile,
-                encrypted
+
+            byte[] encryptedBytes =
+                ProtectedData.Protect(
+                    plainBytes,
+                    Entropy,
+                    DataProtectionScope.CurrentUser
+                );
+
+
+            string encoded =
+                Convert.ToBase64String(
+                    encryptedBytes
+                );
+
+
+            string tempPath =
+                sessionPath + ".tmp";
+
+
+            File.WriteAllText(
+                tempPath,
+                encoded,
+                Encoding.UTF8
             );
 
 
+            if (File.Exists(sessionPath))
+            {
+                File.Delete(sessionPath);
+            }
 
+
+            File.Move(
+                tempPath,
+                sessionPath
+            );
+
+
+            SecurityLogger.Security(
+                "session.secure saved"
+            );
+
+
+            return true;
         }
-
-        catch(Exception)
+        catch (Exception ex)
         {
+            SecurityLogger.Error(
+                $"Session save failed: {ex.Message}"
+            );
 
-
-            ClearSession();
-
-
+            return false;
         }
-
-
     }
 
 
-
-
-
-
-
-
-    // =================================
-    // LOAD SESSION AUTO LOGIN
-    // =================================
-
+    // ============================================================
+    // LOAD SESSION
+    // ============================================================
 
     public string? LoadSession()
     {
-
-
         try
         {
-
-
-            if(!File.Exists(sessionFile))
+            if (!File.Exists(sessionPath))
             {
+                SecurityLogger.Info(
+                    "session.secure not found"
+                );
 
                 return null;
-
             }
 
 
-
-
-
-            byte[] encrypted =
-                File.ReadAllBytes(
-                    sessionFile
+            string encoded =
+                File.ReadAllText(
+                    sessionPath,
+                    Encoding.UTF8
                 );
 
 
-
-
-
-            string token =
-                Decrypt(
-                    encrypted
-                );
-
-
-
-
-            if(string.IsNullOrWhiteSpace(token))
+            if (string.IsNullOrWhiteSpace(encoded))
             {
+                ClearSession();
 
                 return null;
-
             }
 
 
+            byte[] encryptedBytes =
+                Convert.FromBase64String(
+                    encoded
+                );
 
 
+            byte[] plainBytes =
+                ProtectedData.Unprotect(
+                    encryptedBytes,
+                    Entropy,
+                    DataProtectionScope.CurrentUser
+                );
 
-            return token;
+
+            string json =
+                Encoding.UTF8.GetString(
+                    plainBytes
+                );
 
 
+            SessionData? session =
+                JsonSerializer.Deserialize<SessionData>(
+                    json
+                );
+
+
+            if (session == null ||
+                string.IsNullOrWhiteSpace(session.Token))
+            {
+                SecurityLogger.Error(
+                    "Invalid session.secure"
+                );
+
+                ClearSession();
+
+                return null;
+            }
+
+
+            if (session.ExpiresUtc <=
+                DateTimeOffset.UtcNow)
+            {
+                SecurityLogger.Security(
+                    "session.secure expired"
+                );
+
+                ClearSession();
+
+                return null;
+            }
+
+
+            SecurityLogger.Security(
+                "session.secure restored"
+            );
+
+
+            return session.Token;
         }
-
-        catch
+        catch (CryptographicException)
         {
-
+            SecurityLogger.Error(
+                "session.secure DPAPI validation failed"
+            );
 
             ClearSession();
 
             return null;
-
-
         }
+        catch (Exception ex)
+        {
+            SecurityLogger.Error(
+                $"Session load failed: {ex.Message}"
+            );
 
+            ClearSession();
 
+            return null;
+        }
     }
 
 
-
-
-
-
-
-
-
-
-    // =================================
+    // ============================================================
     // CLEAR SESSION
-    // =================================
-
+    // ============================================================
 
     public void ClearSession()
     {
-
-
         try
         {
-
-
-            if(File.Exists(sessionFile))
+            if (File.Exists(sessionPath))
             {
-
                 File.Delete(
-                    sessionFile
+                    sessionPath
                 );
-
             }
 
 
+            SecurityLogger.Security(
+                "session.secure cleared"
+            );
         }
+        catch (Exception ex)
+        {
+            SecurityLogger.Error(
+                $"Session clear failed: {ex.Message}"
+            );
+        }
+    }
 
+
+    // ============================================================
+    // SESSION EXISTS
+    // ============================================================
+
+    public bool HasValidSession()
+    {
+        return !string.IsNullOrWhiteSpace(
+            LoadSession()
+        );
+    }
+
+
+    // ============================================================
+    // SESSION PATH
+    // ============================================================
+
+    public string GetSessionPath()
+    {
+        return sessionPath;
+    }
+
+
+    // ============================================================
+    // JWT EXPIRATION
+    // ============================================================
+
+    private static DateTimeOffset? GetJwtExpiration(
+        string jwt)
+    {
+        try
+        {
+            string[] parts =
+                jwt.Split('.');
+
+            if (parts.Length != 3)
+                return null;
+
+
+            string payload =
+                parts[1]
+                    .Replace('-', '+')
+                    .Replace('_', '/');
+
+
+            while (payload.Length % 4 != 0)
+            {
+                payload += "=";
+            }
+
+
+            byte[] bytes =
+                Convert.FromBase64String(
+                    payload
+                );
+
+
+            using JsonDocument document =
+                JsonDocument.Parse(bytes);
+
+
+            if (!document.RootElement.TryGetProperty(
+                    "exp",
+                    out JsonElement expElement))
+            {
+                return null;
+            }
+
+
+            if (!expElement.TryGetInt64(
+                    out long exp))
+            {
+                return null;
+            }
+
+
+            return DateTimeOffset.FromUnixTimeSeconds(
+                exp
+            );
+        }
         catch
         {
-
-
+            return null;
         }
-
-
     }
 
 
+    // ============================================================
+    // SESSION MODEL
+    // ============================================================
 
-
-
-
-
-
-
-    // =================================
-    // AES ENCRYPTION
-    // =================================
-
-
-    private byte[] Encrypt(
-        string text)
+    private sealed class SessionData
     {
+        public string Token { get; set; } = "";
 
+        public DateTimeOffset CreatedUtc { get; set; }
 
-        byte[] data =
-            Encoding.UTF8.GetBytes(
-                text
-            );
-
-
-
-        using Aes aes =
-            Aes.Create();
-
-
-
-
-        aes.Key =
-            GetKey();
-
-
-
-
-        aes.GenerateIV();
-
-
-
-
-        using MemoryStream ms =
-            new MemoryStream();
-
-
-
-
-        // simpan IV dulu
-
-        ms.Write(
-            aes.IV,
-            0,
-            aes.IV.Length
-        );
-
-
-
-
-        using CryptoStream cs =
-            new CryptoStream(
-                ms,
-                aes.CreateEncryptor(),
-                CryptoStreamMode.Write
-            );
-
-
-
-        cs.Write(
-            data,
-            0,
-            data.Length
-        );
-
-
-        cs.FlushFinalBlock();
-
-
-
-
-        return ms.ToArray();
-
-
+        public DateTimeOffset ExpiresUtc { get; set; }
     }
-
-
-
-
-
-
-
-
-
-
-    // =================================
-    // AES DECRYPT
-    // =================================
-
-
-    private string Decrypt(
-        byte[] encrypted)
-    {
-
-
-
-        using Aes aes =
-            Aes.Create();
-
-
-
-
-        aes.Key =
-            GetKey();
-
-
-
-
-        byte[] iv =
-            new byte[16];
-
-
-
-        Array.Copy(
-            encrypted,
-            iv,
-            16
-        );
-
-
-
-        aes.IV =
-            iv;
-
-
-
-
-
-        using MemoryStream ms =
-            new MemoryStream(
-                encrypted,
-                16,
-                encrypted.Length - 16
-            );
-
-
-
-
-
-        using CryptoStream cs =
-            new CryptoStream(
-                ms,
-                aes.CreateDecryptor(),
-                CryptoStreamMode.Read
-            );
-
-
-
-
-
-        using StreamReader reader =
-            new StreamReader(
-                cs
-            );
-
-
-
-        return reader.ReadToEnd();
-
-
-    }
-
-
-
-
-
-
-
-
-
-    // =================================
-    // WINDOWS PROTECTED KEY
-    // =================================
-
-
-    private byte[] GetKey()
-    {
-
-
-        byte[] machineKey =
-            Encoding.UTF8.GetBytes(
-                "NGPB_LAUNCHER_SECURITY_KEY_2026"
-            );
-
-
-
-
-
-        return ProtectedData.Protect(
-
-            machineKey,
-
-            null,
-
-            DataProtectionScope.CurrentUser
-
-        );
-
-
-    }
-
-
-
 }
