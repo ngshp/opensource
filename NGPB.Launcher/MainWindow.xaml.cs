@@ -1,3 +1,4 @@
+```csharp
 using System;
 using System.Threading.Tasks;
 using System.Windows;
@@ -10,694 +11,687 @@ using NGPB.Launcher.Security;
 
 namespace NGPB.Launcher;
 
-
 public partial class MainWindow : Window
 {
-
-
-    // ===============================
-    // UPDATE SERVICE
-    // ===============================
+    // ============================================================
+    // UPDATE
+    // ============================================================
 
     private readonly PatchDownloader downloader;
-
     private readonly UpdateService updateService;
 
 
-
-    // ===============================
+    // ============================================================
     // SECURITY
-    // ===============================
+    // ============================================================
 
     private readonly LauncherShield shield;
-
     private readonly MainSecure mainSecure;
-
     private readonly AntiCheatService antiCheat;
 
 
-
-    // ===============================
+    // ============================================================
     // CONFIG
-    // ===============================
+    // ============================================================
 
     private readonly AppConfigService configService;
-
     private AppConfig? appConfig;
 
 
-
-    // ===============================
+    // ============================================================
     // SESSION
-    // ===============================
+    // ============================================================
 
     private readonly SessionManager sessionManager;
-
     private string? currentToken;
 
 
+    // ============================================================
+    // STATE
+    // ============================================================
 
     private bool isUpdating;
+    private bool launcherReady;
 
 
-
-
-
-
-
-    // ===============================
+    // ============================================================
     // CONSTRUCTOR
-    // ===============================
-
+    // ============================================================
 
     public MainWindow()
     {
-
-
         InitializeComponent();
 
-
-
-        // VIDEO START
-
-        BackgroundVideo.Play();
-
-
-
-        LoadingText.Text =
-            "Starting NGPB Launcher...";
-
-
-
-        SecurityLogger.Info(
-            "NGPB Launcher Starting"
-        );
-
-
-
-
-
-        downloader =
-            new PatchDownloader();
-
-
-
-        updateService =
-            new UpdateService();
-
-
-
-
-
-
-        shield =
-            new LauncherShield();
-
-
-
-        mainSecure =
-            new MainSecure();
-
-
-
-        antiCheat =
-            new AntiCheatService();
-
-
-
-
-
-
-
-        configService =
-            new AppConfigService();
-
-
-
-
-        sessionManager =
-            new SessionManager();
-
-
-
-
-
-
-
-        // ===============================
-        // MAIN.SECURE
-        // ===============================
-
-
-        LoadingText.Text =
-            "Checking Security...";
-
-
-
-        if(!mainSecure.Validate())
+        try
         {
+            LoadingScreen.Visibility =
+                Visibility.Visible;
 
+            LoadingScreen.Opacity = 1;
 
-            SecurityLogger.Error(
-                "main.secure failed"
-            );
-
-
-            MessageBox.Show(
-                "Launcher Security Failed"
-            );
-
-
-            Application.Current.Shutdown();
-
-            return;
-
-
-        }
-
-
-
-
-
-
-
-
-
-        // ===============================
-        // APP.SECURE
-        // ===============================
-
-
-        LoadingText.Text =
-            "Loading Configuration...";
-
-
-
-        LoadAppConfig();
-
-
-
-
-
-
-
-
-        // ===============================
-        // SESSION
-        // ===============================
-
-
-        LoadingText.Text =
-            "Loading Session...";
-
-
-
-        LoadSession();
-
-
-
-
-
-
-
-        // ===============================
-        // INTEGRITY
-        // ===============================
-
-
-        LoadingText.Text =
-            "Checking Launcher Integrity...";
-
-
-
-        if(!shield.RunSecurityCheck())
-        {
-
-
-            SecurityLogger.Error(
-                "Integrity Failed"
-            );
-
-
-
-            MessageBox.Show(
-                "Launcher Modified"
-            );
-
-
-
-            Application.Current.Shutdown();
-
-            return;
-
-
-        }
-
-
-
-
-
-
-
-
-        // ===============================
-        // ANTI CHEAT
-        // ===============================
-
-
-        LoadingText.Text =
-            "Starting Anti Cheat...";
-
-
-
-        antiCheat.Initialize();
-
-
-
-
-
-
-
-        PauseButton.IsEnabled = false;
-
-        ResumeButton.IsEnabled = false;
-
-
-
-
-
-        SecurityLogger.Security(
-            "NGPB Launcher Ready"
-        );
-
-
-
-
-
-        FadeOutLoading();
-
-
-
-    }
-
-
-
-
-
-
-
-
-
-
-    // ===============================
-    // APP.SECURE
-    // ===============================
-
-
-    private void LoadAppConfig()
-    {
-
-
-        appConfig =
-            configService.Load();
-
-
-
-
-        if(appConfig == null)
-        {
-
-
-            SecurityLogger.Error(
-                "app.secure missing"
-            );
-
-
-
-            MessageBox.Show(
-                "Configuration Error"
-            );
-
-
-
-            Application.Current.Shutdown();
-
-            return;
-
-
-        }
-
-
-
-
-        SecurityLogger.Info(
-            "app.secure loaded"
-        );
-
-
-    }
-
-
-
-
-
-
-
-
-
-    // ===============================
-    // SESSION.SECURE
-    // ===============================
-
-
-    private void LoadSession()
-    {
-
-
-        currentToken =
-            sessionManager.LoadSession();
-
-
-
-
-        if(currentToken != null)
-        {
-
-
-            SecurityLogger.Security(
-                "Session Restored"
-            );
-
-
-        }
-        else
-        {
+            LoadingText.Text =
+                "Starting NGPB Launcher...";
 
 
             SecurityLogger.Info(
-                "No Session"
+                "========================================"
+            );
+
+            SecurityLogger.Info(
+                "NGPB Launcher Starting"
+            );
+
+            SecurityLogger.Info(
+                "========================================"
             );
 
 
+            // ----------------------------------------------------
+            // VIDEO
+            // ----------------------------------------------------
+
+            try
+            {
+                BackgroundVideo.Play();
+            }
+            catch (Exception ex)
+            {
+                SecurityLogger.Error(
+                    $"Background video failed: {ex.Message}"
+                );
+            }
+
+
+            // ----------------------------------------------------
+            // SERVICES
+            // ----------------------------------------------------
+
+            downloader =
+                new PatchDownloader();
+
+            updateService =
+                new UpdateService();
+
+
+            // ----------------------------------------------------
+            // SECURITY SERVICES
+            // ----------------------------------------------------
+
+            shield =
+                new LauncherShield();
+
+            mainSecure =
+                new MainSecure();
+
+            antiCheat =
+                new AntiCheatService();
+
+
+            // ----------------------------------------------------
+            // CONFIG + SESSION
+            // ----------------------------------------------------
+
+            configService =
+                new AppConfigService();
+
+            sessionManager =
+                new SessionManager();
+
+
+            // ----------------------------------------------------
+            // MAIN.SECURE
+            // ----------------------------------------------------
+
+            LoadingText.Text =
+                "Checking Security...";
+
+
+            if (!mainSecure.Validate())
+            {
+                SecurityLogger.Error(
+                    "MainSecure validation FAILED"
+                );
+
+                ShowSecurityError(
+                    "Launcher Security Failed.\n\n" +
+                    "The secure configuration could not be verified."
+                );
+
+                return;
+            }
+
+
+            SecurityLogger.Security(
+                "MainSecure validation passed"
+            );
+
+
+            // ----------------------------------------------------
+            // LOAD VERIFIED CONFIG
+            // ----------------------------------------------------
+
+            LoadingText.Text =
+                "Loading Configuration...";
+
+
+            LoadAppConfig();
+
+
+            if (appConfig == null)
+            {
+                return;
+            }
+
+
+            // ----------------------------------------------------
+            // SESSION
+            // ----------------------------------------------------
+
+            LoadingText.Text =
+                "Loading Session...";
+
+
+            LoadSession();
+
+
+            // ----------------------------------------------------
+            // LAUNCHER INTEGRITY
+            // ----------------------------------------------------
+
+            LoadingText.Text =
+                "Checking Launcher Integrity...";
+
+
+            if (!shield.RunSecurityCheck())
+            {
+                SecurityLogger.Error(
+                    "LauncherShield integrity FAILED"
+                );
+
+                ShowSecurityError(
+                    "Launcher integrity verification failed."
+                );
+
+                return;
+            }
+
+
+            SecurityLogger.Security(
+                "LauncherShield integrity passed"
+            );
+
+
+            // ----------------------------------------------------
+            // ANTI CHEAT INITIALIZATION
+            // ----------------------------------------------------
+
+            LoadingText.Text =
+                "Starting Anti Cheat...";
+
+
+            antiCheat.Initialize();
+
+
+            SecurityLogger.Security(
+                "AntiCheat initialized"
+            );
+
+
+            // ----------------------------------------------------
+            // UI INITIAL STATE
+            // ----------------------------------------------------
+
+            PauseButton.IsEnabled = false;
+            ResumeButton.IsEnabled = false;
+
+
+            Progress.Value = 0;
+
+            DownloadText.Text =
+                "Ready";
+
+
+            launcherReady = true;
+
+
+            SecurityLogger.Security(
+                "NGPB Launcher Ready"
+            );
+
+
+            // ----------------------------------------------------
+            // LOADING SCREEN
+            // ----------------------------------------------------
+
+            FadeOutLoading();
         }
+        catch (Exception ex)
+        {
+            SecurityLogger.Error(
+                $"Launcher startup exception: {ex}"
+            );
 
-
+            ShowSecurityError(
+                "Launcher startup failed."
+            );
+        }
     }
 
 
+    // ============================================================
+    // APP.SECURE
+    // ============================================================
+
+    private void LoadAppConfig()
+    {
+        try
+        {
+            appConfig =
+                mainSecure.GetConfig();
 
 
+            if (appConfig == null)
+            {
+                SecurityLogger.Error(
+                    "Verified app.secure configuration unavailable"
+                );
+
+                ShowSecurityError(
+                    "Configuration verification failed."
+                );
+
+                return;
+            }
 
 
+            SecurityLogger.Security(
+                "app.secure loaded and verified"
+            );
 
 
+            SecurityLogger.Info(
+                $"Launcher Version: {appConfig.LauncherVersion}"
+            );
 
-    // ===============================
-    // LOGIN
-    // ===============================
+            SecurityLogger.Info(
+                $"Game: {appConfig.GameName}"
+            );
+
+            SecurityLogger.Info(
+                $"Game EXE: {appConfig.GameExe}"
+            );
+        }
+        catch (Exception ex)
+        {
+            SecurityLogger.Error(
+                $"app.secure load error: {ex.Message}"
+            );
+
+            ShowSecurityError(
+                "Configuration Error."
+            );
+        }
+    }
 
 
-    public void LoginSuccess(
+    // ============================================================
+    // SESSION.SECURE / AUTO LOGIN
+    // ============================================================
+
+    private void LoadSession()
+    {
+        try
+        {
+            currentToken =
+                sessionManager.LoadSession();
+
+
+            if (!string.IsNullOrWhiteSpace(
+                    currentToken))
+            {
+                SecurityLogger.Security(
+                    "session.secure restored"
+                );
+
+                DownloadText.Text =
+                    "Session restored";
+            }
+            else
+            {
+                SecurityLogger.Info(
+                    "No valid session.secure found"
+                );
+
+                DownloadText.Text =
+                    "Ready";
+            }
+        }
+        catch (Exception ex)
+        {
+            SecurityLogger.Error(
+                $"Session load error: {ex.Message}"
+            );
+
+            currentToken = null;
+        }
+    }
+
+
+    // ============================================================
+    // LOGIN SUCCESS
+    // ============================================================
+
+    public bool LoginSuccess(
         string jwtToken)
     {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(
+                    jwtToken))
+            {
+                SecurityLogger.Error(
+                    "Login failed: empty JWT"
+                );
+
+                return false;
+            }
 
 
-        currentToken =
-            jwtToken;
+            if (!sessionManager.SaveSession(
+                    jwtToken))
+            {
+                SecurityLogger.Error(
+                    "Login failed: session could not be saved"
+                );
+
+                return false;
+            }
 
 
-
-        sessionManager.SaveSession(
-            jwtToken
-        );
+            currentToken =
+                jwtToken;
 
 
+            SecurityLogger.Security(
+                "Login Success"
+            );
 
-        SecurityLogger.Security(
-            "Login Success"
-        );
+
+            DownloadText.Text =
+                "Logged in";
 
 
+            return true;
+        }
+        catch (Exception ex)
+        {
+            SecurityLogger.Error(
+                $"Login error: {ex.Message}"
+            );
+
+            return false;
+        }
     }
 
 
-
-
-
-
-
-
-
-    // ===============================
+    // ============================================================
     // LOGOUT
-    // ===============================
-
+    // ============================================================
 
     public void Logout()
     {
+        try
+        {
+            sessionManager.ClearSession();
+
+            currentToken = null;
 
 
-        sessionManager.ClearSession();
+            SecurityLogger.Security(
+                "Logout Success"
+            );
 
 
-
-        currentToken = null;
-
-
-
-        SecurityLogger.Security(
-            "Logout"
-        );
-
-
+            DownloadText.Text =
+                "Logged out";
+        }
+        catch (Exception ex)
+        {
+            SecurityLogger.Error(
+                $"Logout error: {ex.Message}"
+            );
+        }
     }
 
 
-
-
-
-
-
-
-
-    // ===============================
-    // START UPDATE
-    // ===============================
-
+    // ============================================================
+    // UPDATE BUTTON
+    // ============================================================
 
     private async void UpdateButton_Click(
         object sender,
         RoutedEventArgs e)
     {
-
-
-        if(isUpdating)
+        if (!launcherReady)
+        {
+            SecurityLogger.Error(
+                "Update blocked: launcher not ready"
+            );
 
             return;
+        }
 
+
+        if (isUpdating)
+        {
+            return;
+        }
 
 
         isUpdating = true;
 
 
-
         UpdateButton.IsEnabled = false;
-
         PauseButton.IsEnabled = true;
-
         ResumeButton.IsEnabled = true;
-
-
-
 
 
         try
         {
-
-
             await StartUpdate();
-
-
         }
-
-        catch(Exception ex)
+        catch (Exception ex)
         {
-
-
             SecurityLogger.Error(
-                ex.Message
+                $"Update exception: {ex}"
             );
-
 
             MessageBox.Show(
-                ex.Message
+                ex.Message,
+                "NGPB Update Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
             );
-
-
         }
-
         finally
         {
-
-
             isUpdating = false;
 
-
-
             UpdateButton.IsEnabled = true;
-
             PauseButton.IsEnabled = false;
-
             ResumeButton.IsEnabled = false;
-
-
         }
-
-
     }
 
 
-
-
-
-
-
-
-
-    // ===============================
-    // UPDATE PROCESS
-    // ===============================
-
+    // ============================================================
+    // UPDATE SECURITY FLOW
+    // ============================================================
 
     private async Task StartUpdate()
     {
+        // --------------------------------------------------------
+        // MAIN.SECURE UPDATE GATE
+        // --------------------------------------------------------
 
+        if (!mainSecure.ValidateBeforeUpdate())
+        {
+            SecurityLogger.Error(
+                "Update blocked by MainSecure"
+            );
+
+            MessageBox.Show(
+                "Security validation failed.",
+                "NGPB Launcher",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            );
+
+            return;
+        }
+
+
+        // --------------------------------------------------------
+        // ANTI CHEAT
+        // --------------------------------------------------------
 
         SecurityLogger.Security(
-            "Security Scan Before Update"
+            "Anti Cheat Scan Before Update"
         );
 
 
-
-
-
-        if(!antiCheat.CheckSafe())
+        if (!antiCheat.CheckSafe())
         {
-
-
             SecurityLogger.Error(
-                "Anti Cheat Violation"
+                "Anti Cheat violation detected"
             );
-
 
             MessageBox.Show(
-                "Security Violation"
+                "Security violation detected.",
+                "NGPB Launcher",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
             );
 
-
             return;
-
-
         }
 
 
+        // --------------------------------------------------------
+        // LAUNCHER INTEGRITY
+        // --------------------------------------------------------
 
-
-
-
-
-        if(!shield.RunSecurityCheck())
+        if (!shield.RunSecurityCheck())
         {
-
-
             SecurityLogger.Error(
-                "Integrity Failed"
+                "Launcher integrity failed before update"
             );
 
+            MessageBox.Show(
+                "Launcher integrity verification failed.",
+                "NGPB Launcher",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            );
 
             return;
-
-
         }
 
 
+        // --------------------------------------------------------
+        // CONFIG
+        // --------------------------------------------------------
+
+        if (appConfig == null)
+        {
+            SecurityLogger.Error(
+                "Update blocked: appConfig unavailable"
+            );
+
+            return;
+        }
 
 
+        // --------------------------------------------------------
+        // START UPDATE
+        // --------------------------------------------------------
 
-
+        SecurityLogger.Security(
+            "Update security checks passed"
+        );
 
 
         DownloadText.Text =
             "Checking Update...";
 
 
+        Progress.Value = 0;
+
+
+        // --------------------------------------------------------
+        // MANIFEST
+        // --------------------------------------------------------
 
         var manifest =
             await updateService.GetManifest();
 
 
-
-
-
-
-        if(manifest == null)
+        if (manifest == null)
         {
-
-
-            MessageBox.Show(
+            SecurityLogger.Error(
                 "Manifest unavailable"
             );
 
+            MessageBox.Show(
+                "Manifest tidak tersedia.",
+                "NGPB Update",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
 
             return;
-
-
         }
 
 
+        // --------------------------------------------------------
+        // DOWNLOAD FILES
+        // --------------------------------------------------------
 
-
-
-
-
-        foreach(PatchFile file in manifest.Files)
+        foreach (PatchFile file in manifest.Files)
         {
+            if (!isUpdating)
+            {
+                return;
+            }
 
+
+            SecurityLogger.Info(
+                $"Preparing download: {file.Name}"
+            );
 
 
             DownloadText.Text =
-                $"Downloading {file.Name}";
-
+                $"Preparing\n{file.Name}";
 
 
             var progress =
-            new Progress<DownloadProgressInfo>(
-            p =>
-            {
+                new Progress<DownloadProgressInfo>(
+                    p =>
+                    {
+                        Progress.Value =
+                            Math.Clamp(
+                                p.Percentage,
+                                0,
+                                100
+                            );
 
 
-                Progress.Value =
-                    p.Percentage;
-
-
-
-                DownloadText.Text =
-
-                $"{p.FileName}\n\n" +
-
-                $"{p.Percentage:F2}%\n" +
-
-                $"{p.Speed:F2} MB/s";
-
-
-
-            });
-
-
-
-
-
-
+                        DownloadText.Text =
+                            $"{p.FileName}\n\n" +
+                            $"{p.Percentage:F2}%\n" +
+                            $"{p.Speed:F2} MB/s";
+                    }
+                );
 
 
             await downloader.Download(
@@ -706,169 +700,168 @@ public partial class MainWindow : Window
             );
 
 
-
-
             SecurityLogger.Security(
-                $"Download Complete {file.Name}"
+                $"Download Complete: {file.Name}"
             );
-
-
         }
 
 
-
-
-
-
+        // --------------------------------------------------------
+        // COMPLETE
+        // --------------------------------------------------------
 
         Progress.Value = 100;
-
 
 
         DownloadText.Text =
             "UPDATE COMPLETE";
 
 
-
         SecurityLogger.Security(
             "UPDATE COMPLETE"
         );
-
-
     }
 
 
-
-
-
-
-
-
-
-    // ===============================
+    // ============================================================
     // PAUSE
-    // ===============================
-
+    // ============================================================
 
     private void Pause_Click(
         object sender,
         RoutedEventArgs e)
     {
+        if (!isUpdating)
+        {
+            return;
+        }
 
 
         downloader.Pause();
 
 
-
         DownloadText.Text =
-            "Paused";
-
+            "Download Paused";
 
 
         SecurityLogger.Info(
             "Download Paused"
         );
-
-
     }
 
 
-
-
-
-
-
-
-
-    // ===============================
+    // ============================================================
     // RESUME
-    // ===============================
-
+    // ============================================================
 
     private void Resume_Click(
         object sender,
         RoutedEventArgs e)
     {
+        if (!isUpdating)
+        {
+            return;
+        }
 
 
         downloader.Resume();
 
 
-
         DownloadText.Text =
-            "Resumed";
-
+            "Download Resumed";
 
 
         SecurityLogger.Info(
             "Download Resumed"
         );
-
-
     }
 
 
-
-
-
-
-
-
-
-    // ===============================
-    // LOADING ANIMATION
-    // ===============================
-
+    // ============================================================
+    // LOADING SCREEN
+    // ============================================================
 
     private void FadeOutLoading()
     {
-
-
         DoubleAnimation fade =
-            new DoubleAnimation();
+            new DoubleAnimation
+            {
+                From = 1,
+                To = 0,
 
-
-
-        fade.From = 1;
-
-        fade.To = 0;
-
-
-
-        fade.Duration =
-            new Duration(
-                TimeSpan.FromSeconds(1)
-            );
-
-
-
+                Duration =
+                    new Duration(
+                        TimeSpan.FromSeconds(1)
+                    )
+            };
 
 
         fade.Completed +=
-        (s,e)=>
-        {
+            (_, _) =>
+            {
+                LoadingScreen.Visibility =
+                    Visibility.Collapsed;
 
-
-            LoadingScreen.Visibility =
-                Visibility.Collapsed;
-
-
-        };
-
-
-
-
+                LoadingScreen.Opacity = 0;
+            };
 
 
         LoadingScreen.BeginAnimation(
             OpacityProperty,
             fade
         );
-
-
-
     }
 
 
+    // ============================================================
+    // SECURITY ERROR
+    // ============================================================
 
+    private void ShowSecurityError(
+        string message)
+    {
+        try
+        {
+            MessageBox.Show(
+                message,
+                "NG PB Launcher",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            );
+        }
+        finally
+        {
+            launcherReady = false;
+
+            Application.Current.Shutdown();
+        }
+    }
+
+
+    // ============================================================
+    // WINDOW CLOSED
+    // ============================================================
+
+    protected override void OnClosed(
+        EventArgs e)
+    {
+        try
+        {
+            BackgroundVideo.Stop();
+        }
+        catch
+        {
+            // Ignore video shutdown errors.
+        }
+
+
+        SecurityLogger.Info(
+            "NGPB Launcher Closed"
+        );
+
+
+        base.OnClosed(e);
+    }
 }
+
+
