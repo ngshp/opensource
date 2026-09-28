@@ -8,5 +8,5 @@ public sealed class PatchFile
 
     public long Size { get; set; }
 
-    public string SHA256 { get; set; } = "";
+    public string Sha256 { get; set; } = "";
 }
