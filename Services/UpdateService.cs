@@ -1,11 +1,11 @@
 using System;
-using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
 using NGPB.Launcher.Models;
 using NGPB.Launcher.Security;
 
@@ -15,30 +15,35 @@ public sealed class UpdateService
 {
     private readonly HttpClient httpClient;
 
-    private readonly string manifestUrl;
+    private const string ManifestFile =
+        "manifest.secure";
 
-    // RSA public key.
-    // Ganti dengan PUBLIC KEY milik server produksi.
-    private const string ManifestPublicKeyPem = """
+    // ============================================================
+    // RSA PUBLIC KEY
+    //
+    // PRIVATE KEY TIDAK BOLEH ADA DI LAUNCHER.
+    // Private key hanya digunakan server/CI untuk signing.
+    // ============================================================
+
+    private const string ManifestPublicKey = """
 -----BEGIN PUBLIC KEY-----
-REPLACE_WITH_YOUR_RSA_PUBLIC_KEY
+REPLACE_WITH_MANIFEST_RSA_PUBLIC_KEY
 -----END PUBLIC KEY-----
 """;
 
 
     public UpdateService()
     {
-        httpClient = new HttpClient
-        {
-            Timeout = TimeSpan.FromSeconds(30)
-        };
+        httpClient =
+            new HttpClient
+            {
+                Timeout =
+                    TimeSpan.FromSeconds(30)
+            };
 
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
-            "NGPB-Launcher/1.0"
+            "NGPB-Launcher"
         );
-
-        manifestUrl =
-            "https://patch.ngpb.com/manifest.json";
     }
 
 
@@ -46,29 +51,56 @@ REPLACE_WITH_YOUR_RSA_PUBLIC_KEY
     // GET MANIFEST
     // ============================================================
 
-    public async Task<PatchManifest?> GetManifest(
+    public async Task<UpdateManifest?> GetManifest(
+        string manifestUrl,
         CancellationToken cancellationToken = default)
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(
+                    manifestUrl))
+            {
+                SecurityLogger.Error(
+                    "Manifest URL is empty"
+                );
+
+                return null;
+            }
+
+
+            if (!Uri.TryCreate(
+                    manifestUrl,
+                    UriKind.Absolute,
+                    out Uri? uri))
+            {
+                SecurityLogger.Error(
+                    "Manifest URL invalid"
+                );
+
+                return null;
+            }
+
+
+            if (!uri.Scheme.Equals(
+                    Uri.UriSchemeHttps,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                SecurityLogger.Error(
+                    "Manifest must use HTTPS"
+                );
+
+                return null;
+            }
+
+
             SecurityLogger.Info(
-                "Requesting signed manifest"
+                "Downloading signed manifest"
             );
 
 
-            ValidateHttpsUrl(manifestUrl);
-
-
-            using HttpRequestMessage request =
-                new HttpRequestMessage(
-                    HttpMethod.Get,
-                    manifestUrl
-                );
-
-
             using HttpResponseMessage response =
-                await httpClient.SendAsync(
-                    request,
+                await httpClient.GetAsync(
+                    uri,
                     HttpCompletionOption.ResponseHeadersRead,
                     cancellationToken
                 );
@@ -77,76 +109,111 @@ REPLACE_WITH_YOUR_RSA_PUBLIC_KEY
             response.EnsureSuccessStatusCode();
 
 
-            string json =
+            string document =
                 await response.Content.ReadAsStringAsync(
                     cancellationToken
                 );
 
 
-            if (string.IsNullOrWhiteSpace(json))
+            if (string.IsNullOrWhiteSpace(
+                    document))
             {
                 SecurityLogger.Error(
-                    "Manifest response empty"
+                    "Manifest is empty"
                 );
 
                 return null;
             }
 
 
-            // ====================================================
-            // VERIFY SIGNATURE BEFORE USING FILE DATA
-            // ====================================================
+            SignedManifest? signed =
+                JsonSerializer.Deserialize<SignedManifest>(
+                    document
+                );
 
-            if (!VerifyManifestSignature(json))
+
+            if (signed == null)
             {
                 SecurityLogger.Error(
-                    "Manifest signature verification FAILED"
+                    "Manifest format invalid"
                 );
 
-                throw new CryptographicException(
-                    "Manifest signature verification failed."
+                return null;
+            }
+
+
+            if (string.IsNullOrWhiteSpace(
+                    signed.Payload))
+            {
+                SecurityLogger.Error(
+                    "Manifest payload missing"
                 );
+
+                return null;
+            }
+
+
+            if (string.IsNullOrWhiteSpace(
+                    signed.Signature))
+            {
+                SecurityLogger.Error(
+                    "Manifest signature missing"
+                );
+
+                return null;
+            }
+
+
+            // ----------------------------------------------------
+            // RSA SIGNATURE
+            // ----------------------------------------------------
+
+            if (!VerifySignature(
+                    signed.Payload,
+                    signed.Signature))
+            {
+                SecurityLogger.Security(
+                    "MANIFEST RSA SIGNATURE INVALID"
+                );
+
+                return null;
             }
 
 
             SecurityLogger.Security(
-                "Manifest signature verified"
+                "Manifest RSA signature VALID"
             );
 
 
-            // ====================================================
-            // PARSE
-            // ====================================================
-
-            PatchManifest? manifest =
-                JsonSerializer.Deserialize<PatchManifest>(
-                    json,
-                    new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    }
+            UpdateManifest? manifest =
+                JsonSerializer.Deserialize<UpdateManifest>(
+                    signed.Payload
                 );
 
 
             if (manifest == null)
             {
                 SecurityLogger.Error(
-                    "Manifest parsing failed"
+                    "Manifest payload invalid"
                 );
 
                 return null;
             }
 
 
-            // ====================================================
-            // VALIDATE MANIFEST
-            // ====================================================
+            if (!ValidateManifest(
+                    manifest))
+            {
+                SecurityLogger.Error(
+                    "Manifest validation failed"
+                );
 
-            ValidateManifest(manifest);
+                return null;
+            }
 
 
             SecurityLogger.Security(
-                $"Manifest accepted: {manifest.Files.Count} files"
+                $"Signed manifest accepted: {manifest.Version}"
             );
 
 
@@ -158,7 +225,15 @@ REPLACE_WITH_YOUR_RSA_PUBLIC_KEY
                 "Manifest request cancelled"
             );
 
-            throw;
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            SecurityLogger.Error(
+                $"Manifest HTTP error: {ex.Message}"
+            );
+
+            return null;
         }
         catch (Exception ex)
         {
@@ -166,78 +241,40 @@ REPLACE_WITH_YOUR_RSA_PUBLIC_KEY
                 $"Manifest error: {ex.Message}"
             );
 
-            throw;
+            return null;
         }
     }
 
 
     // ============================================================
-    // SIGNATURE VERIFICATION
+    // RSA VERIFY
     // ============================================================
 
-    private static bool VerifyManifestSignature(
-        string manifestJson)
+    private static bool VerifySignature(
+        string payload,
+        string signatureBase64)
     {
         try
         {
-            using JsonDocument document =
-                JsonDocument.Parse(manifestJson);
-
-
-            JsonElement root =
-                document.RootElement;
-
-
-            if (!root.TryGetProperty(
-                    "signature",
-                    out JsonElement signatureElement))
+            if (ManifestPublicKey.Contains(
+                    "REPLACE_WITH_MANIFEST_RSA_PUBLIC_KEY",
+                    StringComparison.Ordinal))
             {
                 SecurityLogger.Error(
-                    "Manifest signature missing"
+                    "Manifest RSA public key not configured"
                 );
 
                 return false;
             }
 
 
-            string? signatureBase64 =
-                signatureElement.GetString();
-
-
-            if (string.IsNullOrWhiteSpace(
-                    signatureBase64))
-            {
-                SecurityLogger.Error(
-                    "Manifest signature empty"
-                );
-
-                return false;
-            }
-
-
-            if (!root.TryGetProperty(
-                    "payload",
-                    out JsonElement payloadElement))
-            {
-                SecurityLogger.Error(
-                    "Manifest payload missing"
-                );
-
-                return false;
-            }
-
-
-            string canonicalPayload =
-                payloadElement.GetRawText();
-
-
-            byte[] data =
+            byte[] payloadBytes =
                 Encoding.UTF8.GetBytes(
-                    canonicalPayload
+                    payload
                 );
 
 
-            byte[] signature =
+            byte[] signatureBytes =
                 Convert.FromBase64String(
                     signatureBase64
                 );
@@ -248,13 +285,13 @@ REPLACE_WITH_YOUR_RSA_PUBLIC_KEY
 
 
             rsa.ImportFromPem(
-                ManifestPublicKeyPem
+                ManifestPublicKey
             );
 
 
             return rsa.VerifyData(
-                data,
-                signature,
+                payloadBytes,
+                signatureBytes,
                 HashAlgorithmName.SHA256,
                 RSASignaturePadding.Pkcs1
             );
@@ -262,7 +299,7 @@ REPLACE_WITH_YOUR_RSA_PUBLIC_KEY
         catch (Exception ex)
         {
             SecurityLogger.Error(
-                $"Manifest signature error: {ex.Message}"
+                $"Manifest RSA verification error: {ex.Message}"
             );
 
             return false;
@@ -274,164 +311,174 @@ REPLACE_WITH_YOUR_RSA_PUBLIC_KEY
     // MANIFEST VALIDATION
     // ============================================================
 
-    private static void ValidateManifest(
-        PatchManifest manifest)
+    private static bool ValidateManifest(
+        UpdateManifest manifest)
     {
-        if (manifest.Files == null)
+        if (string.IsNullOrWhiteSpace(
+                manifest.Version))
         {
-            throw new InvalidDataException(
-                "Manifest file list missing."
-            );
+            return false;
         }
 
 
-        if (manifest.Files.Count == 0)
+        if (manifest.Files == null ||
+            manifest.Files.Count == 0)
         {
-            SecurityLogger.Info(
+            SecurityLogger.Error(
                 "Manifest contains no files"
             );
 
-            return;
+            return false;
         }
 
 
         foreach (PatchFile file in manifest.Files)
         {
-            if (file == null)
+            if (!ValidatePatchFile(file))
             {
-                throw new InvalidDataException(
-                    "Manifest contains null file."
-                );
-            }
-
-
-            if (string.IsNullOrWhiteSpace(
-                    file.Name))
-            {
-                throw new InvalidDataException(
-                    "Manifest contains file without name."
-                );
-            }
-
-
-            if (string.IsNullOrWhiteSpace(
-                    file.Url))
-            {
-                throw new InvalidDataException(
-                    $"URL missing for {file.Name}."
-                );
-            }
-
-
-            if (!Uri.TryCreate(
-                    file.Url,
-                    UriKind.Absolute,
-                    out Uri? uri))
-            {
-                throw new InvalidDataException(
-                    $"Invalid URL for {file.Name}."
-                );
-            }
-
-
-            if (!string.Equals(
-                    uri.Scheme,
-                    Uri.UriSchemeHttps,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidDataException(
-                    $"HTTPS required for {file.Name}."
-                );
-            }
-
-
-            if (string.IsNullOrWhiteSpace(
-                    file.SHA256))
-            {
-                throw new InvalidDataException(
-                    $"SHA-256 missing for {file.Name}."
-                );
-            }
-
-
-            ValidateSha256(
-                file.SHA256
-            );
-
-
-            if (file.Size < 0)
-            {
-                throw new InvalidDataException(
-                    $"Invalid file size for {file.Name}."
-                );
+                return false;
             }
         }
+
+
+        return true;
     }
 
 
     // ============================================================
-    // SHA256 FORMAT
+    // PATCH FILE VALIDATION
     // ============================================================
 
-    private static void ValidateSha256(
-        string hash)
+    private static bool ValidatePatchFile(
+        PatchFile file)
     {
-        string normalized =
-            hash
-                .Trim()
-                .Replace("-", "")
-                .Replace(" ", "");
-
-
-        if (normalized.Length != 64)
+        if (string.IsNullOrWhiteSpace(
+                file.Name))
         {
-            throw new InvalidDataException(
-                "Invalid SHA-256 length."
+            SecurityLogger.Error(
+                "Patch file name missing"
             );
+
+            return false;
         }
 
 
-        try
+        if (string.IsNullOrWhiteSpace(
+                file.Url))
         {
-            _ = Convert.FromHexString(
-                normalized
+            SecurityLogger.Error(
+                $"Patch URL missing: {file.Name}"
             );
+
+            return false;
         }
-        catch
-        {
-            throw new InvalidDataException(
-                "Invalid SHA-256 value."
-            );
-        }
-    }
 
 
-    // ============================================================
-    // HTTPS
-    // ============================================================
-
-    private static void ValidateHttpsUrl(
-        string url)
-    {
         if (!Uri.TryCreate(
-                url,
+                file.Url,
                 UriKind.Absolute,
                 out Uri? uri))
         {
-            throw new InvalidDataException(
-                "Invalid manifest URL."
+            SecurityLogger.Error(
+                $"Patch URL invalid: {file.Name}"
             );
+
+            return false;
         }
 
 
-        if (!string.Equals(
-                uri.Scheme,
+        if (!uri.Scheme.Equals(
                 Uri.UriSchemeHttps,
                 StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidDataException(
-                "Manifest must use HTTPS."
+            SecurityLogger.Error(
+                $"Patch URL must use HTTPS: {file.Name}"
             );
+
+            return false;
         }
+
+
+        if (string.IsNullOrWhiteSpace(
+                file.Sha256))
+        {
+            SecurityLogger.Error(
+                $"SHA-256 missing: {file.Name}"
+            );
+
+            return false;
+        }
+
+
+        if (!IsSha256(file.Sha256))
+        {
+            SecurityLogger.Error(
+                $"Invalid SHA-256: {file.Name}"
+            );
+
+            return false;
+        }
+
+
+        if (file.Size < 0)
+        {
+            SecurityLogger.Error(
+                $"Invalid file size: {file.Name}"
+            );
+
+            return false;
+        }
+
+
+        return true;
+    }
+
+
+    // ============================================================
+    // SHA-256 FORMAT
+    // ============================================================
+
+    private static bool IsSha256(
+        string value)
+    {
+        if (value.Length != 64)
+            return false;
+
+
+        foreach (char c in value)
+        {
+            bool hex =
+                (c >= '0' && c <= '9') ||
+                (c >= 'a' && c <= 'f') ||
+                (c >= 'A' && c <= 'F');
+
+            if (!hex)
+                return false;
+        }
+
+
+        return true;
+    }
+
+
+    // ============================================================
+    // DISPOSE
+    // ============================================================
+
+    public void Dispose()
+    {
+        httpClient.Dispose();
+    }
+
+
+    // ============================================================
+    // SIGNED MANIFEST MODEL
+    // ============================================================
+
+    private sealed class SignedManifest
+    {
+        public string Payload { get; set; } = "";
+
+        public string Signature { get; set; } = "";
     }
 }
